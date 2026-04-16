@@ -100,7 +100,7 @@ public final class SurfaceControl {
             }
             return (IBinder) method.invoke(null);
         } catch (ReflectiveOperationException e) {
-            Ln.e("Could not invoke method", e);
+            Ln.e("Could not invoke built-in display token method", e);
             return null;
         }
     }
@@ -118,7 +118,7 @@ public final class SurfaceControl {
             method.invoke(null, displayToken, mode);
             return true;
         } catch (ReflectiveOperationException e) {
-            Ln.e("Could not invoke method", e);
+            Ln.e("Could not invoke setDisplayPowerMode", e);
             return false;
         }
     }
