@@ -1,6 +1,9 @@
 package org.server.scrcpy;
 
 import static org.server.scrcpy.model.CommandPacket.CmdType.VIDEO_NEW_KEY_FRAME;
+import static org.server.scrcpy.model.CommandPacket.CmdType.DISPLAY_POWER_OFF;
+import static org.server.scrcpy.model.CommandPacket.CmdType.DISPLAY_POWER_ON;
+import static org.server.scrcpy.model.CommandPacket.CmdType.DISPLAY_POWER_TOGGLE;
 
 import android.media.MediaCodec;
 import android.os.Build;
@@ -32,6 +35,7 @@ public class EventController {
     private final DroidConnection connection;
 
     private final ScreenEncoder screenEncoder;
+    private final Options options;
 
     private final MotionEvent.PointerProperties[] pointerProperties = new MotionEvent.PointerProperties[PointersState.MAX_POINTERS];
     private final MotionEvent.PointerCoords[] pointerCoords = new MotionEvent.PointerCoords[PointersState.MAX_POINTERS];
@@ -42,11 +46,13 @@ public class EventController {
     private float then;
     private boolean hit = false;
     private boolean proximity = false;
+    private boolean displayPowerOffByController = false;
 
-    public EventController(Device device, DroidConnection connection, ScreenEncoder screenEncoder) {
+    public EventController(Device device, DroidConnection connection, ScreenEncoder screenEncoder, Options options) {
         this.device = device;
         this.connection = connection;
         this.screenEncoder = screenEncoder;
+        this.options = options;
         initPointers();
     }
 
@@ -86,11 +92,14 @@ public class EventController {
         return array;
     }
 
-    private void injectControlEvenv(byte[] buf) {
+    private void injectControlEvent(byte[] buf) {
         int[] buffer = controlByteToIntArray(buf);
+        if (buffer.length == 0) {
+            return;
+        }
 
         long now = SystemClock.uptimeMillis();
-        if (buffer[2] == 0 && buffer[3] == 0) {
+        if (buffer.length == 1) {
             if (buffer[0] == 28) {
                 proximity = true;           // Proximity event
             } else if (buffer[0] == 29) {
@@ -98,23 +107,34 @@ public class EventController {
             } else {
                 injectKeycode(buffer[0]);
             }
-        } else {
-            int action = buffer[0];
-            if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || proximity)) {
-                if (hit) {
-                    if (now - then < 250) {
-                        then = 0;
-                        hit = false;
-                        injectKeycode(KeyEvent.KEYCODE_POWER);
-                    } else {
-                        then = now;
-                    }
+            return;
+        }
+        if (buffer.length < 4) {
+            Ln.w("Invalid control packet length: " + buffer.length);
+            return;
+        }
+
+        int action = buffer[0];
+        boolean screenOffWithoutController = !device.isScreenOn() && !displayPowerOffByController;
+        if (action == MotionEvent.ACTION_UP && (screenOffWithoutController || proximity)) {
+            // ACTION_UP is intercepted here for power/proximity logic, so explicitly clear pending pointers
+            // to avoid stuck "holding" state when screen is off.
+            releasePendingTouches();
+            if (hit) {
+                if (now - then < 250) {
+                    then = 0;
+                    hit = false;
+                    injectKeycode(KeyEvent.KEYCODE_POWER);
+                    displayPowerOffByController = false;
                 } else {
-                    hit = true;
                     then = now;
                 }
-
             } else {
+                hit = true;
+                then = now;
+            }
+
+        } else {
 //                        if (action == MotionEvent.ACTION_DOWN) {
 //                            lastMouseDown = now;
 //                        }
@@ -128,11 +148,14 @@ public class EventController {
 //                        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, action, 1, pointerProperties, pointerCoords, 0, button, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
 //                        injectEvent(event);
 
-                // 为支持多点触控，新增 buffer[4] 这个字节
-                Point point = new Point(buffer[2], buffer[3]);
-                Point newpoint = device.NewgetPhysicalPoint(point);
-                injectTouch(action, buffer[4], newpoint, buffer[1]);
+            // 为支持多点触控，新增 buffer[4] 这个字节
+            Point point = new Point(buffer[2], buffer[3]);
+            Point newpoint = device.NewgetPhysicalPoint(point);
+            int pointerIdValue = buffer.length > 4 ? buffer[4] : 0;
+            if (buffer.length <= 4) {
+                Ln.w("Control packet missing pointer id, fallback to 0");
             }
+            injectTouch(action, pointerIdValue, newpoint, buffer[1]);
         }
     }
 
@@ -142,29 +165,49 @@ public class EventController {
             case VIDEO_NEW_KEY_FRAME:
                 screenEncoder.asyncRequestKeyFrame();
                 break;
+            case DISPLAY_POWER_ON:
+                turnScreenOn();
+                break;
+            case DISPLAY_POWER_OFF:
+                turnScreenOff();
+                break;
+            case DISPLAY_POWER_TOGGLE:
+                toggleScreenPower();
+                break;
         }
     }
 
     public void control() throws IOException {
-        // on start, turn screen on
-        turnScreenOn();
+        try {
+            if (options.isTurnScreenOff()) {
+                turnScreenOff();
+            } else {
+                // on start, turn screen on
+                turnScreenOn();
+            }
 
-        while (true) {
-            //           handleEvent();
-            MediaPacket mediaPacket = connection.NewReceiveEvent();
-            try {
-                if (mediaPacket != null) {
-                    switch (mediaPacket.type) {
-                        case CONTROL:
-                            injectControlEvenv(((ControlPacket) mediaPacket).data);
-                            break;
-                        case COMMAND:
-                            extraCommand((CommandPacket) mediaPacket);
-                            break;
+            while (true) {
+                //           handleEvent();
+                MediaPacket mediaPacket = connection.NewReceiveEvent();
+                try {
+                    if (mediaPacket != null) {
+                        switch (mediaPacket.type) {
+                            case CONTROL:
+                                injectControlEvent(((ControlPacket) mediaPacket).data);
+                                break;
+                            case COMMAND:
+                                extraCommand((CommandPacket) mediaPacket);
+                                break;
+                        }
                     }
+                } catch (Exception e) {
+                    Log.e("Scrcpy", "error : " + e);
                 }
-            } catch (Exception e) {
-                Log.e("Scrcpy", "error : " + e);
+            }
+        } finally {
+            releasePendingTouches();
+            if (displayPowerOffByController) {
+                turnScreenOn();
             }
         }
     }
@@ -215,18 +258,24 @@ public class EventController {
         pointer.setUp(pointerUp);
 
         int pointerCount = pointersState.update(pointerProperties, pointerCoords);
+        int finalAction = action;
         if (pointerCount == 1) {
-            if (action == MotionEvent.ACTION_DOWN) {
+            if (actionType == MotionEvent.ACTION_POINTER_UP) {
+                finalAction = MotionEvent.ACTION_UP;
+            } else if (actionType == MotionEvent.ACTION_POINTER_DOWN) {
+                finalAction = MotionEvent.ACTION_DOWN;
+            }
+            if (finalAction == MotionEvent.ACTION_DOWN) {
                 lastMouseDown = now;
             }
         } else {
             // secondary pointers must use ACTION_POINTER_* ORed with the pointerIndex
             // 与原版 scrcpy 相比，Android 传输的触控信息已经包含 ACTION_POINTER_UP ，此处需要新增兼容，否则多点触控会出现异常
             if (action == MotionEvent.ACTION_UP || actionType == MotionEvent.ACTION_POINTER_UP) {
-                action = MotionEvent.ACTION_POINTER_UP | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
+                finalAction = MotionEvent.ACTION_POINTER_UP | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
                 // Ln.w("按钮 Pointer 抬起");
             } else if (action == MotionEvent.ACTION_DOWN || actionType == MotionEvent.ACTION_POINTER_DOWN) {
-                action = MotionEvent.ACTION_POINTER_DOWN | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
+                finalAction = MotionEvent.ACTION_POINTER_DOWN | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
                 // Ln.w("按钮 Pointer 按下");
             }
         }
@@ -288,7 +337,7 @@ public class EventController {
 //            }
 //        }
 
-        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, action, pointerCount, pointerProperties, pointerCoords, 0, button, 1f, 1f,
+        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, finalAction, pointerCount, pointerProperties, pointerCoords, 0, 0, 1f, 1f,
                 0, 0, source, 0);
 
         // return Device.injectEvent(event, targetDisplayId, Device.INJECT_MODE_ASYNC);
@@ -311,8 +360,61 @@ public class EventController {
         return device.injectInputEvent(event, InputManager.INJECT_INPUT_EVENT_MODE_ASYNC);
     }
 
+    private void releasePendingTouches() {
+        int pointerCount = pointersState.update(pointerProperties, pointerCoords);
+        if (pointerCount == 0) {
+            return;
+        }
+
+        long now = SystemClock.uptimeMillis();
+        MotionEvent cancelEvent = MotionEvent.obtain(
+                lastMouseDown,
+                now,
+                MotionEvent.ACTION_CANCEL,
+                pointerCount,
+                pointerProperties,
+                pointerCoords,
+                0,
+                0,
+                1f,
+                1f,
+                0,
+                0,
+                InputDevice.SOURCE_TOUCHSCREEN,
+                0
+        );
+        injectEvent(cancelEvent);
+        pointersState.clear();
+    }
+
     private boolean turnScreenOn() {
-        return device.isScreenOn() || injectKeycode(KeyEvent.KEYCODE_POWER);
+        if (!displayPowerOffByController && device.isScreenOn()) {
+            return true;
+        }
+        boolean success = device.setDisplayPower(true);
+        if (success) {
+            displayPowerOffByController = false;
+        }
+        return success;
+    }
+
+    private boolean turnScreenOff() {
+        if (displayPowerOffByController || !device.isScreenOn()) {
+            displayPowerOffByController = true;
+            return true;
+        }
+        boolean success = device.setDisplayPower(false);
+        if (success) {
+            displayPowerOffByController = true;
+        }
+        return success;
+    }
+
+    private boolean toggleScreenPower() {
+        if (!displayPowerOffByController && device.isScreenOn()) {
+            return turnScreenOff();
+        }
+        return turnScreenOn();
     }
 
 }

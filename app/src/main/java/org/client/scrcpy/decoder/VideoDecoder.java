@@ -11,9 +11,33 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class VideoDecoder {
+    public static final String CODEC_H264 = "h264";
+    public static final String CODEC_H265 = "h265";
+    public static final String CODEC_AV1 = "av1";
     private MediaCodec mCodec;
     private Worker mWorker;
     private AtomicBoolean mIsConfigured = new AtomicBoolean(false);
+    private String codec = CODEC_H264;
+
+    public void setCodec(String codec) {
+        if (CODEC_H265.equals(codec)) {
+            this.codec = CODEC_H265;
+        } else if (CODEC_AV1.equals(codec)) {
+            this.codec = CODEC_AV1;
+        } else {
+            this.codec = CODEC_H264;
+        }
+    }
+
+    private String getMimeType() {
+        if (CODEC_H265.equals(codec)) {
+            return "video/hevc";
+        }
+        if (CODEC_AV1.equals(codec)) {
+            return "video/av01";
+        }
+        return "video/avc";
+    }
 
     public void decodeSample(byte[] data, int offset, int size, long presentationTimeUs, int flags) {
         if (mWorker != null) {
@@ -66,11 +90,12 @@ public class VideoDecoder {
                 }
 
             }
-            MediaFormat format = MediaFormat.createVideoFormat("video/avc", width, height);
+            String mimeType = getMimeType();
+            MediaFormat format = MediaFormat.createVideoFormat(mimeType, width, height);
             format.setByteBuffer("csd-0", csd0);
             format.setByteBuffer("csd-1", csd1);
             try {
-                mCodec = MediaCodec.createDecoderByType("video/avc");
+                mCodec = MediaCodec.createDecoderByType(mimeType);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to create codec", e);
             }

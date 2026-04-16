@@ -5,13 +5,26 @@
   <string name="label_video_resolution">解像度</string>
   <string name="delay_control">遅延コントロール</string>
   <string name="label_video_bitrate">ビットレート</string>
+  <string name="label_custom_video_bitrate">カスタム動画ビットレート (bps、任意)</string>
+  <string name="label_custom_audio_bitrate">カスタム音声ビットレート (bps、任意)</string>
+  <string name="label_custom_fps">カスタム FPS (任意)</string>
+  <string name="label_video_codec">動画コーデック</string>
+  <string name="label_audio_codec">音声コーデック</string>
   <string name="label_x">x</string>
   <string name="action_start">開始</string>
+  <string name="action_view_logs">ログを表示</string>
+  <string name="title_logs">ログ</string>
+  <string name="action_refresh_logs">更新</string>
+  <string name="logs_empty">Scrcpy タグのログはありません。</string>
+  <string name="logs_load_failed">ログの読み込みに失敗しました</string>
   <string name="appswitch_button">=</string>
   <string name="home_button">o</string>
   <string name="back_button">\u003C</string>
   <string name="switch0">ビューイングモード (コントロールなし)</string>
   <string name="switch1">下部のコントロールボタン (戻るボタン)</string>
+  <string name="switch_disable_audio_forward">音声をクライアントへ転送しない (ホストで再生)</string>
+  <string name="switch_turn_screen_off">ホスト画面をオフにする</string>
+  <string name="switch_keep_awake">ホストをスリープさせない</string>
   <string name="connect_tips">ヒント: デバイスでワイヤレスデバッグを有効化する必要があります。\n\t\tadb ポートコマンドのリセット: adb tcpip 5555</string>
   <string name="please_wait">接続中 …</string>
   <string name="connect_faild">接続に失敗しました</string>
@@ -43,11 +56,13 @@
     <item>4 Mbps</item>
     <item>2 Mbps</item>
     <item>1 Mbps</item>
+    <item>カスタム</item>
   </string-array>
   <integer-array name="options_bitrate_values">
     <item>6144000</item>
     <item>4096000</item>
     <item>2048000</item>
     <item>1024000</item>
+    <item>0</item>
   </integer-array>
 </resources>

@@ -23,8 +23,15 @@ import java.nio.ByteBuffer;
 
 public class AudioEncoder {
     public static final String MIMETYPE_AUDIO_AAC = "audio/mp4a-latm";
+    public static final String MIMETYPE_AUDIO_OPUS = "audio/opus";
+    public static final String MIMETYPE_AUDIO_FLAC = "audio/flac";
+    public static final String CODEC_AAC = "aac";
+    public static final String CODEC_OPUS = "opus";
+    public static final String CODEC_FLAC = "flac";
+    public static final String CODEC_RAW = "raw";
 
     private int bitRate;
+    private String codec = CODEC_AAC;
 
     private HandlerThread mediaCodecThread;
 
@@ -38,14 +45,40 @@ public class AudioEncoder {
         this.bitRate = bitRate;
     }
 
-    private static MediaCodec createCodec() throws IOException {
-        return MediaCodec.createEncoderByType(MIMETYPE_AUDIO_AAC);
+    public AudioEncoder(int bitRate, String codec) {
+        this.bitRate = bitRate;
+        setCodec(codec);
     }
 
-    private static MediaFormat createFormat(int bitRate) throws IOException {
+    public void setCodec(String codec) {
+        if (CODEC_OPUS.equals(codec) || CODEC_FLAC.equals(codec) || CODEC_RAW.equals(codec) || CODEC_AAC.equals(codec)) {
+            this.codec = codec;
+        } else {
+            this.codec = CODEC_AAC;
+        }
+    }
+
+    private String getMimeType() {
+        if (CODEC_OPUS.equals(codec)) {
+            return MIMETYPE_AUDIO_OPUS;
+        }
+        if (CODEC_FLAC.equals(codec)) {
+            return MIMETYPE_AUDIO_FLAC;
+        }
+        if (CODEC_RAW.equals(codec)) {
+            Ln.w("Raw audio codec is not supported by this build, falling back to AAC");
+        }
+        return MIMETYPE_AUDIO_AAC;
+    }
+
+    private MediaCodec createCodec() throws IOException {
+        return MediaCodec.createEncoderByType(getMimeType());
+    }
+
+    private MediaFormat createFormat(int bitRate) throws IOException {
 
         MediaFormat format = new MediaFormat();
-        format.setString(MediaFormat.KEY_MIME, MIMETYPE_AUDIO_AAC);
+        format.setString(MediaFormat.KEY_MIME, getMimeType());
         format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
         format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 2);  // 通道数固定
         format.setInteger(MediaFormat.KEY_SAMPLE_RATE, 48000);  // 采样率固定

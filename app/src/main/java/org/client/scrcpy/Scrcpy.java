@@ -59,6 +59,9 @@ public class Scrcpy extends Service {
 
     private DataInputStream socketInputStream = null;
     private DataOutputStream socketOutputStream = null;
+    private boolean audioForward = true;
+    private String videoCodec = "h264";
+    private String audioCodec = "aac";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -75,19 +78,29 @@ public class Scrcpy extends Service {
         this.surface = NewSurface;
 
         videoDecoder.start();
-        audioDecoder.start();
+        if (audioForward) {
+            audioDecoder.start();
+        }
 
 
         updateAvailable.set(true);
 
     }
 
-    public void start(Surface surface, String serverAdr, int screenHeight, int screenWidth, int delay) {
+    public void start(Surface surface, String serverAdr, int screenHeight, int screenWidth, int delay,
+                      boolean audioForward, String videoCodec, String audioCodec) {
+        this.audioForward = audioForward;
+        this.videoCodec = TextUtils.isEmpty(videoCodec) ? "h264" : videoCodec;
+        this.audioCodec = TextUtils.isEmpty(audioCodec) ? "aac" : audioCodec;
         this.videoDecoder = new VideoDecoder();
+        videoDecoder.setCodec(this.videoCodec);
         videoDecoder.start();
 
         this.audioDecoder = new AudioDecoder();
-        audioDecoder.start();
+        audioDecoder.setCodec(this.audioCodec);
+        if (this.audioForward) {
+            audioDecoder.start();
+        }
 
         String[] serverInfo = Util.getServerHostAndPort(serverAdr);
         this.serverHost = serverInfo[0];
@@ -120,7 +133,9 @@ public class Scrcpy extends Service {
             videoDecoder.start();
         }
         if (audioDecoder != null) {
-            audioDecoder.start();
+            if (audioForward) {
+                audioDecoder.start();
+            }
         }
         updateAvailable.set(true);
 
@@ -167,7 +182,8 @@ public class Scrcpy extends Service {
         int pointCount = touch_event.getPointerCount();
         // Log.e("Scrcpy", "pointer id: " + pointerId + " , action: " + touch_event.getAction() + " ,point count: " + pointCount + " x: " + touch_event.getX() + " y: " + touch_event.getY());
 
-        switch (touch_event.getAction()) {
+        int actionMasked = touch_event.getActionMasked();
+        switch (actionMasked) {
             case MotionEvent.ACTION_MOVE: // 所有手指移动
                 // 遍历所有触摸点，使用 pointerId 和 pointerIndex 来获取所有触摸点的信息
                 for (int i = 0; i < touch_event.getPointerCount(); i++) {
@@ -176,7 +192,7 @@ public class Scrcpy extends Service {
                     int y = (int) touch_event.getY(i);
                     // 处理每一个触摸点的x, y坐标
                     // Log.e("Scrcpy", "触摸移动，index : " + i + " ,x : " + x + " , y: " + y + " ,currentPointerId: " + currentPointerId);
-                    sendTouchEvent(touch_event.getAction(), touch_event.getButtonState(), (int) (x * realW / displayW), (int) (y * realH / displayH), currentPointerId);
+                    sendTouchEvent(actionMasked, touch_event.getButtonState(), (int) (x * realW / displayW), (int) (y * realH / displayH), currentPointerId);
                 }
                 break;
             case MotionEvent.ACTION_POINTER_UP: // 中间手指抬起
@@ -184,7 +200,13 @@ public class Scrcpy extends Service {
             case MotionEvent.ACTION_DOWN: // 第一个手指按下
             case MotionEvent.ACTION_POINTER_DOWN: // 中间的手指按下
             default:
-                sendTouchEvent(touch_event.getAction(), touch_event.getButtonState(), (int) (touch_event.getX() * realW / displayW), (int) (touch_event.getY() * realH / displayH), pointerId);
+                sendTouchEvent(
+                        actionMasked,
+                        touch_event.getButtonState(),
+                        (int) (touch_event.getX(actionIndex) * realW / displayW),
+                        (int) (touch_event.getY(actionIndex) * realH / displayH),
+                        pointerId
+                );
                 break;
 
         }
@@ -237,9 +259,13 @@ public class Scrcpy extends Service {
     private void startConnection(String ip, int port, int delay) {
 
         videoDecoder = new VideoDecoder();
+        videoDecoder.setCodec(videoCodec);
         videoDecoder.start();
         audioDecoder = new AudioDecoder();
-        audioDecoder.start();
+        audioDecoder.setCodec(audioCodec);
+        if (audioForward) {
+            audioDecoder.start();
+        }
 
         DataInputStream dataInputStream = null;
         DataOutputStream dataOutputStream = null;
@@ -360,8 +386,39 @@ public class Scrcpy extends Service {
      * 请求关键帧
      */
     public boolean requestNewKeyFrame() throws IOException {
+        return sendCommand(CommandPacket.CmdType.VIDEO_NEW_KEY_FRAME);
+    }
+
+    public boolean toggleDisplayPower() {
+        try {
+            return sendCommand(CommandPacket.CmdType.DISPLAY_POWER_TOGGLE);
+        } catch (IOException e) {
+            Log.e("Scrcpy", "toggleDisplayPower failed", e);
+            return false;
+        }
+    }
+
+    public boolean turnDisplayPowerOn() {
+        try {
+            return sendCommand(CommandPacket.CmdType.DISPLAY_POWER_ON);
+        } catch (IOException e) {
+            Log.e("Scrcpy", "turnDisplayPowerOn failed", e);
+            return false;
+        }
+    }
+
+    public boolean turnDisplayPowerOff() {
+        try {
+            return sendCommand(CommandPacket.CmdType.DISPLAY_POWER_OFF);
+        } catch (IOException e) {
+            Log.e("Scrcpy", "turnDisplayPowerOff failed", e);
+            return false;
+        }
+    }
+
+    private boolean sendCommand(CommandPacket.CmdType cmdType) throws IOException {
         if (LetServceRunning.get() && socketOutputStream != null) {
-            socketOutputStream.write(CommandPacket.toArray(MediaPacket.Type.COMMAND, CommandPacket.CmdType.VIDEO_NEW_KEY_FRAME, new byte[0]));
+            socketOutputStream.write(CommandPacket.toArray(MediaPacket.Type.COMMAND, cmdType, new byte[0]));
             return true;
         }
         return false;
@@ -466,6 +523,9 @@ public class Scrcpy extends Service {
                         }
                         first_time = false;
                     } else if (MediaPacket.Type.getType(packet[0]) == MediaPacket.Type.AUDIO) {
+                        if (!audioForward) {
+                            continue;
+                        }
                         AudioPacket audioPacket = AudioPacket.readHead(packet);
                         // byte[] data = audioPacket.data;
                         if (audioPacket.flag == AudioPacket.Flag.CONFIG) {

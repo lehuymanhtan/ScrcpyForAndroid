@@ -13,6 +13,8 @@ import android.view.Surface;
 import android.view.SurfaceView;
 import android.widget.Toast;
 
+import org.client.scrcpy.utils.PreUtils;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -59,7 +61,10 @@ public class ScrcpyHost implements Scrcpy.ServiceCallbacks {
             scrcpy.setServiceCallbacks(ScrcpyHost.this);
             serviceBound = true;
             if (first_time) {
-                scrcpy.start(surface, serverAdr, screenHeight, screenWidth, 50);
+                boolean audioForward = !PreUtils.get(context, Constant.PREFERENCE_DISABLE_AUDIO_FORWARD, false);
+                String videoCodec = getStringPreference(Constant.PREFERENCE_SPINNER_VIDEO_CODEC, R.array.options_video_codec_values, "h264");
+                String audioCodec = getStringPreference(Constant.PREFERENCE_SPINNER_AUDIO_CODEC, R.array.options_audio_codec_values, "aac");
+                scrcpy.start(surface, serverAdr, screenHeight, screenWidth, 50, audioForward, videoCodec, audioCodec);
                 int count = 100;
                 while (count != 0 && !scrcpy.check_socket_connection()) {
                     count--;
@@ -138,6 +143,14 @@ public class ScrcpyHost implements Scrcpy.ServiceCallbacks {
 
         local_ip = wifiIpAddress();
         if (!serverAdr.isEmpty()) {
+            int maxFps = parsePositiveIntOrDefault(PreUtils.get(context, Constant.PREFERENCE_CUSTOM_FPS, ""), 60);
+            int customVideoBitrate = parsePositiveIntOrDefault(PreUtils.get(context, Constant.PREFERENCE_CUSTOM_VIDEO_BITRATE, ""), videoBitrate);
+            int audioBitrate = parsePositiveIntOrDefault(PreUtils.get(context, Constant.PREFERENCE_CUSTOM_AUDIO_BITRATE, ""), 128000);
+            String videoCodec = getStringPreference(Constant.PREFERENCE_SPINNER_VIDEO_CODEC, R.array.options_video_codec_values, "h264");
+            String audioCodec = getStringPreference(Constant.PREFERENCE_SPINNER_AUDIO_CODEC, R.array.options_audio_codec_values, "aac");
+            boolean audioForward = !PreUtils.get(context, Constant.PREFERENCE_DISABLE_AUDIO_FORWARD, false);
+            boolean turnScreenOff = PreUtils.get(context, Constant.PREFERENCE_TURN_SCREEN_OFF, false);
+            boolean keepAwake = PreUtils.get(context, Constant.PREFERENCE_KEEP_AWAKE, false);
             String serverHost;
             int serverPort = 5555;
             int localForwardPort = Scrcpy.LOCAL_FORWART_PORT;
@@ -155,7 +168,8 @@ public class ScrcpyHost implements Scrcpy.ServiceCallbacks {
                     serverPort,
                     localForwardPort,
                     Scrcpy.LOCAL_IP,
-                    videoBitrate, Math.max(screenHeight, screenWidth)) == SendCommands.CmdStatus.SUCCESS) {
+                    customVideoBitrate, Math.max(screenHeight, screenWidth), maxFps, videoCodec, audioCodec, audioBitrate,
+                    audioForward, turnScreenOff, keepAwake, false) == SendCommands.CmdStatus.SUCCESS) {
                 start_screen_copy_magic();
             } else {
                 Toast.makeText(context, "Network OR ADB connection failed", Toast.LENGTH_SHORT).show();
@@ -213,6 +227,27 @@ public class ScrcpyHost implements Scrcpy.ServiceCallbacks {
 
     public void keyEvent(int keyCode) {
         scrcpy.sendKeyevent(keyCode);
+    }
+
+    private int parsePositiveIntOrDefault(String value, int defaultValue) {
+        if (value == null || value.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private String getStringPreference(String preferenceKey, int arrayResId, String defaultValue) {
+        String[] options = context.getResources().getStringArray(arrayResId);
+        int index = PreUtils.get(context, preferenceKey, 0);
+        if (index >= 0 && index < options.length) {
+            return options[index];
+        }
+        return defaultValue;
     }
 
 

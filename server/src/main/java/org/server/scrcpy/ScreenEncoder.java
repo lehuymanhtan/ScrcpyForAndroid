@@ -39,6 +39,10 @@ public class ScreenEncoder implements Device.RotationListener {
     private int bitRate;
     private int frameRate;
     private int iFrameInterval;
+    private String videoMimeType = "video/avc";
+    private boolean audioForward;
+    private String audioCodec;
+    private int audioBitRate;
 
     public ScreenEncoder(int bitRate, int frameRate, int iFrameInterval) {
         this.bitRate = bitRate;
@@ -50,17 +54,34 @@ public class ScreenEncoder implements Device.RotationListener {
         this(bitRate, DEFAULT_FRAME_RATE, DEFAULT_I_FRAME_INTERVAL);
     }
 
-    private static MediaCodec createCodec() throws IOException {
-        return MediaCodec.createEncoderByType("video/avc");
+    public ScreenEncoder(Options options) {
+        this(options.getBitRate(), options.getMaxFps() > 0 ? options.getMaxFps() : DEFAULT_FRAME_RATE, DEFAULT_I_FRAME_INTERVAL);
+        if (Options.VIDEO_CODEC_H265.equals(options.getVideoCodec())) {
+            this.videoMimeType = "video/hevc";
+        } else if (Options.VIDEO_CODEC_AV1.equals(options.getVideoCodec())) {
+            this.videoMimeType = "video/av01";
+        } else {
+            this.videoMimeType = "video/avc";
+        }
+        this.audioForward = options.isAudioForward();
+        this.audioCodec = options.getAudioCodec();
+        this.audioBitRate = options.getAudioBitRate();
     }
 
-    private static MediaFormat createFormat(int bitRate, int frameRate, int iFrameInterval) throws IOException {
+    private MediaCodec createCodec() throws IOException {
+        return MediaCodec.createEncoderByType(videoMimeType);
+    }
+
+    private MediaFormat createFormat(int bitRate, int frameRate, int iFrameInterval) throws IOException {
         MediaFormat format = new MediaFormat();
-        format.setString(MediaFormat.KEY_MIME, "video/avc");
+        format.setString(MediaFormat.KEY_MIME, videoMimeType);
         format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
         format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            format.setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, (float) frameRate);
+        }
 
         // display the very first frame, and recover from bad quality when no new frames
         format.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, MICROSECONDS_IN_ONE_SECOND * REPEAT_FRAME_DELAY / frameRate); // µs
@@ -121,7 +142,7 @@ public class ScreenEncoder implements Device.RotationListener {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                AudioEncoder audioEncoder = new AudioEncoder(128000);
+                AudioEncoder audioEncoder = new AudioEncoder(audioBitRate, audioCodec);
                 try {
                     audioEncoder.streamScreen(outputStream);
                 } catch (IOException e) {
@@ -136,6 +157,7 @@ public class ScreenEncoder implements Device.RotationListener {
     }
 
     public void streamScreen(Device device, OutputStream outputStream) throws IOException {
+        OutputStream synchronizedOutputStream = new SynchronizedOutputStream(outputStream);
         // Log.d("ScreenCapture", buildDisplayListMessage());
         int[] buf = new int[]{device.getScreenInfo().getDeviceSize().getWidth(), device.getScreenInfo().getDeviceSize().getHeight()};
         final byte[] array = new byte[buf.length * 4];   // https://stackoverflow.com/questions/2183240/java-integer-to-byte-array
@@ -146,9 +168,11 @@ public class ScreenEncoder implements Device.RotationListener {
             array[j * 4 + 2] = (byte) ((c & 0xFF00) >> 8);
             array[j * 4 + 3] = (byte) (c & 0xFF);
         }
-        outputStream.write(array, 0, array.length);   // Sending device resolution
+        synchronizedOutputStream.write(array, 0, array.length);   // Sending device resolution
 
-        startAudioCapture(outputStream);  // start audio capture
+        if (audioForward) {
+            startAudioCapture(synchronizedOutputStream);  // start audio capture
+        }
 
         MediaFormat format = createFormat(bitRate, frameRate, iFrameInterval);
         device.setRotationListener(this);
@@ -172,7 +196,7 @@ public class ScreenEncoder implements Device.RotationListener {
                     capture.start(surface);
                     codec.start();
 
-                    alive = encode(codec, outputStream);
+                    alive = encode(codec, synchronizedOutputStream);
                     errorCount = 0;
                 } catch (IllegalStateException | IllegalArgumentException e) {
                     Ln.e("Encoding error: " + e.getClass().getName(), e);
@@ -276,5 +300,73 @@ public class ScreenEncoder implements Device.RotationListener {
         }
 
         return !eof;
+    }
+
+    /**
+     * Serializes all stream writes from video and audio encoder threads so packet bytes are never interleaved.
+     * This preserves packet framing over a shared socket output stream.
+     */
+    private static final class SynchronizedOutputStream extends OutputStream {
+        private final OutputStream delegate;
+        private final Object lock = new Object();
+        private volatile boolean closed;
+
+        SynchronizedOutputStream(OutputStream delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
+                delegate.write(b);
+            }
+        }
+
+        @Override
+        public void write(byte[] b) throws IOException {
+            synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
+                delegate.write(b);
+            }
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
+                delegate.write(b, off, len);
+            }
+        }
+
+        @Override
+        public void flush() throws IOException {
+            synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
+                delegate.flush();
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (closed) {
+                return;
+            }
+            synchronized (lock) {
+                if (closed) {
+                    return;
+                }
+                closed = true;
+            }
+            delegate.close();
+        }
     }
 }
