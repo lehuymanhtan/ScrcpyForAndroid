@@ -182,8 +182,8 @@ public class Scrcpy extends Service {
         int pointCount = touch_event.getPointerCount();
         // Log.e("Scrcpy", "pointer id: " + pointerId + " , action: " + touch_event.getAction() + " ,point count: " + pointCount + " x: " + touch_event.getX() + " y: " + touch_event.getY());
 
-        int maskedAction = touch_event.getActionMasked();
-        switch (maskedAction) {
+        int actionMasked = touch_event.getActionMasked();
+        switch (actionMasked) {
             case MotionEvent.ACTION_MOVE: // 所有手指移动
                 // 遍历所有触摸点，使用 pointerId 和 pointerIndex 来获取所有触摸点的信息
                 for (int i = 0; i < touch_event.getPointerCount(); i++) {
@@ -192,7 +192,7 @@ public class Scrcpy extends Service {
                     int y = (int) touch_event.getY(i);
                     // 处理每一个触摸点的x, y坐标
                     // Log.e("Scrcpy", "触摸移动，index : " + i + " ,x : " + x + " , y: " + y + " ,currentPointerId: " + currentPointerId);
-                    sendTouchEvent(maskedAction, touch_event.getButtonState(), (int) (x * realW / displayW), (int) (y * realH / displayH), currentPointerId);
+                    sendTouchEvent(actionMasked, touch_event.getButtonState(), (int) (x * realW / displayW), (int) (y * realH / displayH), currentPointerId);
                 }
                 break;
             case MotionEvent.ACTION_POINTER_UP: // 中间手指抬起
@@ -201,7 +201,7 @@ public class Scrcpy extends Service {
             case MotionEvent.ACTION_POINTER_DOWN: // 中间的手指按下
             default:
                 sendTouchEvent(
-                        maskedAction,
+                        actionMasked,
                         touch_event.getButtonState(),
                         (int) (touch_event.getX(actionIndex) * realW / displayW),
                         (int) (touch_event.getY(actionIndex) * realH / displayH),
