@@ -81,7 +81,7 @@ public final class SurfaceControl {
         }
     }
 
-    private static Method getBuiltInDisplayMethod() throws NoSuchMethodException {
+    private static synchronized Method getBuiltInDisplayMethod() throws NoSuchMethodException {
         if (getBuiltInDisplayMethod == null) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                 getBuiltInDisplayMethod = CLASS.getMethod("getBuiltInDisplay", int.class);
@@ -105,7 +105,7 @@ public final class SurfaceControl {
         }
     }
 
-    private static Method getSetDisplayPowerModeMethod() throws NoSuchMethodException {
+    private static synchronized Method getSetDisplayPowerModeMethod() throws NoSuchMethodException {
         if (setDisplayPowerModeMethod == null) {
             setDisplayPowerModeMethod = CLASS.getMethod("setDisplayPowerMode", IBinder.class, int.class);
         }

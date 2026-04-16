@@ -102,7 +102,8 @@ public final class Device {
         int mode = on ? SurfaceControl.POWER_MODE_NORMAL : SurfaceControl.POWER_MODE_OFF;
         IBinder displayToken = SurfaceControl.getBuiltInDisplay();
         if (displayToken == null) {
-            Ln.e("Could not get built-in display");
+            Ln.e("Could not get built-in display token to set display power to " + (on ? "on" : "off")
+                    + " (api=" + Build.VERSION.SDK_INT + ")");
             return false;
         }
         return SurfaceControl.setDisplayPowerMode(displayToken, mode);
