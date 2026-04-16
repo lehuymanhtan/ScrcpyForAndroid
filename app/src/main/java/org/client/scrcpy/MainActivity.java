@@ -24,6 +24,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.View;
@@ -87,6 +88,8 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
     private Surface surface;
     private Scrcpy scrcpy;
     private long timestamp = 0;
+    private boolean remoteScreenExpectedOff = false;
+    private boolean fourFingerToggleInProgress = false;
 
     // private byte[] fileBase64;
     private LinearLayout linearLayout;
@@ -148,6 +151,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
 
     // userDisconnect ：是否为用户手动断开连接
     private void showMainView(boolean userDisconnect) {
+        ensureHostScreenOnIfNeeded();
         if (scrcpy != null) {
             scrcpy.StopService();
         }
@@ -443,7 +447,12 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         }
         if (!PreUtils.get(context, Constant.CONTROL_NO, false)) {
             // Log.i("Screen", "setOnTouchListener: " + surfaceView.getWidth() + "x" + surfaceView.getHeight());
-            surfaceView.setOnTouchListener((view, event) -> scrcpy.touchevent(event, landscape, surfaceView.getWidth(), surfaceView.getHeight()));
+            surfaceView.setOnTouchListener((view, event) -> {
+                if (handleFourFingerScreenToggle(event)) {
+                    return true;
+                }
+                return scrcpy.touchevent(event, landscape, surfaceView.getWidth(), surfaceView.getHeight());
+            });
         }
 
         if (PreUtils.get(context, Constant.CONTROL_NAV, false) &&
@@ -585,6 +594,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         disableAudioForward = disableAudioSwitch.isChecked();
         turnScreenOff = turnScreenOffSwitch.isChecked();
         keepAwake = keepAwakeSwitch.isChecked();
+        remoteScreenExpectedOff = turnScreenOff;
 
         PreUtils.put(context, Constant.PREFERENCE_CUSTOM_VIDEO_BITRATE, customVideoBitrate);
         PreUtils.put(context, Constant.PREFERENCE_CUSTOM_AUDIO_BITRATE, customAudioBitrate);
@@ -592,6 +602,39 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         PreUtils.put(context, Constant.PREFERENCE_DISABLE_AUDIO_FORWARD, disableAudioForward);
         PreUtils.put(context, Constant.PREFERENCE_TURN_SCREEN_OFF, turnScreenOff);
         PreUtils.put(context, Constant.PREFERENCE_KEEP_AWAKE, keepAwake);
+    }
+
+    private boolean handleFourFingerScreenToggle(MotionEvent event) {
+        if (event == null || scrcpy == null || !serviceBound) {
+            return false;
+        }
+        int action = event.getActionMasked();
+        if (fourFingerToggleInProgress) {
+            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                fourFingerToggleInProgress = false;
+            }
+            return true;
+        }
+        int pointerCount = event.getPointerCount();
+        if (pointerCount >= 4) {
+            boolean reachedFourFingerThreshold =
+                    pointerCount == 4
+                            && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN);
+            if (reachedFourFingerThreshold) {
+                scrcpy.sendKeyevent(KeyEvent.KEYCODE_POWER);
+                remoteScreenExpectedOff = !remoteScreenExpectedOff;
+                fourFingerToggleInProgress = true;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void ensureHostScreenOnIfNeeded() {
+        if (remoteScreenExpectedOff && scrcpy != null && serviceBound) {
+            scrcpy.sendKeyevent(KeyEvent.KEYCODE_WAKEUP);
+            remoteScreenExpectedOff = false;
+        }
     }
 
     private String[] getHistoryList() {

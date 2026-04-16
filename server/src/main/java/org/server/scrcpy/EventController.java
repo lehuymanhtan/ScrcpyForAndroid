@@ -88,11 +88,14 @@ public class EventController {
         return array;
     }
 
-    private void injectControlEvenv(byte[] buf) {
+    private void injectControlEvent(byte[] buf) {
         int[] buffer = controlByteToIntArray(buf);
+        if (buffer.length == 0) {
+            return;
+        }
 
         long now = SystemClock.uptimeMillis();
-        if (buffer[2] == 0 && buffer[3] == 0) {
+        if (buffer.length == 1) {
             if (buffer[0] == 28) {
                 proximity = true;           // Proximity event
             } else if (buffer[0] == 29) {
@@ -100,23 +103,29 @@ public class EventController {
             } else {
                 injectKeycode(buffer[0]);
             }
-        } else {
-            int action = buffer[0];
-            if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || proximity)) {
-                if (hit) {
-                    if (now - then < 250) {
-                        then = 0;
-                        hit = false;
-                        injectKeycode(KeyEvent.KEYCODE_POWER);
-                    } else {
-                        then = now;
-                    }
+            return;
+        }
+        if (buffer.length < 4) {
+            Ln.w("Invalid control packet length: " + buffer.length);
+            return;
+        }
+
+        int action = buffer[0];
+        if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || proximity)) {
+            if (hit) {
+                if (now - then < 250) {
+                    then = 0;
+                    hit = false;
+                    injectKeycode(KeyEvent.KEYCODE_POWER);
                 } else {
-                    hit = true;
                     then = now;
                 }
-
             } else {
+                hit = true;
+                then = now;
+            }
+
+        } else {
 //                        if (action == MotionEvent.ACTION_DOWN) {
 //                            lastMouseDown = now;
 //                        }
@@ -130,11 +139,14 @@ public class EventController {
 //                        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, action, 1, pointerProperties, pointerCoords, 0, button, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
 //                        injectEvent(event);
 
-                // 为支持多点触控，新增 buffer[4] 这个字节
-                Point point = new Point(buffer[2], buffer[3]);
-                Point newpoint = device.NewgetPhysicalPoint(point);
-                injectTouch(action, buffer[4], newpoint, buffer[1]);
+            // 为支持多点触控，新增 buffer[4] 这个字节
+            Point point = new Point(buffer[2], buffer[3]);
+            Point newpoint = device.NewgetPhysicalPoint(point);
+            int pointerIdValue = buffer.length > 4 ? buffer[4] : 0;
+            if (buffer.length <= 4) {
+                Ln.w("Control packet missing pointer id, fallback to 0");
             }
+            injectTouch(action, pointerIdValue, newpoint, buffer[1]);
         }
     }
 
@@ -162,7 +174,7 @@ public class EventController {
                 if (mediaPacket != null) {
                     switch (mediaPacket.type) {
                         case CONTROL:
-                            injectControlEvenv(((ControlPacket) mediaPacket).data);
+                            injectControlEvent(((ControlPacket) mediaPacket).data);
                             break;
                         case COMMAND:
                             extraCommand((CommandPacket) mediaPacket);
