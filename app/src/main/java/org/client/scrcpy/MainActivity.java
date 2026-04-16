@@ -628,10 +628,13 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             if (reachedFourFingerThreshold) {
                 fourFingerToggleInProgress = true;
                 ThreadUtils.execute(() -> {
-                    final boolean toggleResult = currentScrcpy.toggleDisplayPower();
+                    final boolean targetOff = !remoteScreenExpectedOff;
+                    final boolean toggleResult = targetOff
+                            ? currentScrcpy.turnDisplayPowerOff()
+                            : currentScrcpy.turnDisplayPowerOn();
                     runOnUiThread(() -> {
                         if (toggleResult) {
-                            remoteScreenExpectedOff = !remoteScreenExpectedOff;
+                            remoteScreenExpectedOff = targetOff;
                         }
                         fourFingerToggleInProgress = false;
                     });

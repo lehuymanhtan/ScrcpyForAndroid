@@ -400,6 +400,15 @@ public class Scrcpy extends Service {
         }
     }
 
+    public boolean turnDisplayPowerOff() {
+        try {
+            return sendCommand(CommandPacket.CmdType.DISPLAY_POWER_OFF);
+        } catch (IOException e) {
+            Log.e("Scrcpy", "turnDisplayPowerOff failed", e);
+            return false;
+        }
+    }
+
     private boolean sendCommand(CommandPacket.CmdType cmdType) throws IOException {
         if (LetServceRunning.get() && socketOutputStream != null) {
             socketOutputStream.write(CommandPacket.toArray(MediaPacket.Type.COMMAND, cmdType, new byte[0]));

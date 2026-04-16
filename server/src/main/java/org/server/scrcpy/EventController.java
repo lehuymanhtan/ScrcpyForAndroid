@@ -46,6 +46,7 @@ public class EventController {
     private float then;
     private boolean hit = false;
     private boolean proximity = false;
+    private boolean displayPowerOffByController = false;
 
     public EventController(Device device, DroidConnection connection, ScreenEncoder screenEncoder, Options options) {
         this.device = device;
@@ -114,12 +115,13 @@ public class EventController {
         }
 
         int action = buffer[0];
-        if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || proximity)) {
+        if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || displayPowerOffByController || proximity)) {
             if (hit) {
                 if (now - then < 250) {
                     then = 0;
                     hit = false;
                     injectKeycode(KeyEvent.KEYCODE_POWER);
+                    displayPowerOffByController = false;
                 } else {
                     then = now;
                 }
@@ -342,21 +344,30 @@ public class EventController {
     }
 
     private boolean turnScreenOn() {
-        if (device.isScreenOn()) {
+        if (!displayPowerOffByController && device.isScreenOn()) {
             return true;
         }
-        return device.setDisplayPower(true);
+        boolean success = device.setDisplayPower(true);
+        if (success) {
+            displayPowerOffByController = false;
+        }
+        return success;
     }
 
     private boolean turnScreenOff() {
-        if (!device.isScreenOn()) {
+        if (displayPowerOffByController || !device.isScreenOn()) {
+            displayPowerOffByController = true;
             return true;
         }
-        return device.setDisplayPower(false);
+        boolean success = device.setDisplayPower(false);
+        if (success) {
+            displayPowerOffByController = true;
+        }
+        return success;
     }
 
     private boolean toggleScreenPower() {
-        if (device.isScreenOn()) {
+        if (!displayPowerOffByController && device.isScreenOn()) {
             return turnScreenOff();
         }
         return turnScreenOn();
