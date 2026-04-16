@@ -626,10 +626,23 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                     pointerCount == 4
                             && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN);
             if (reachedFourFingerThreshold) {
-                if (currentScrcpy.toggleDisplayPower()) {
-                    remoteScreenExpectedOff = !remoteScreenExpectedOff;
-                    fourFingerToggleInProgress = true;
-                }
+                fourFingerToggleInProgress = true;
+                ThreadUtils.execute(() -> {
+                    boolean toggled = false;
+                    try {
+                        toggled = currentScrcpy.toggleDisplayPower();
+                    } catch (RuntimeException e) {
+                        Log.e("Scrcpy", "toggleDisplayPower failed", e);
+                    }
+                    final boolean toggleResult = toggled;
+                    runOnUiThread(() -> {
+                        if (toggleResult) {
+                            remoteScreenExpectedOff = !remoteScreenExpectedOff;
+                        } else {
+                            fourFingerToggleInProgress = false;
+                        }
+                    });
+                });
             }
             return true;
         }
@@ -637,9 +650,16 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
     }
 
     private void ensureHostScreenOnIfNeeded() {
-        if (remoteScreenExpectedOff && scrcpy != null && serviceBound) {
-            scrcpy.turnDisplayPowerOn();
+        Scrcpy currentScrcpy = scrcpy;
+        if (remoteScreenExpectedOff && currentScrcpy != null && serviceBound) {
             remoteScreenExpectedOff = false;
+            ThreadUtils.execute(() -> {
+                try {
+                    currentScrcpy.turnDisplayPowerOn();
+                } catch (RuntimeException e) {
+                    Log.e("Scrcpy", "turnDisplayPowerOn failed", e);
+                }
+            });
         }
     }
 
