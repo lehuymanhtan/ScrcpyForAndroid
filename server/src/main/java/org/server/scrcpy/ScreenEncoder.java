@@ -305,6 +305,7 @@ public class ScreenEncoder implements Device.RotationListener {
     private static final class SynchronizedOutputStream extends OutputStream {
         private final OutputStream delegate;
         private final Object lock = new Object();
+        private volatile boolean closed;
 
         SynchronizedOutputStream(OutputStream delegate) {
             this.delegate = delegate;
@@ -313,6 +314,9 @@ public class ScreenEncoder implements Device.RotationListener {
         @Override
         public void write(int b) throws IOException {
             synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
                 delegate.write(b);
             }
         }
@@ -320,6 +324,9 @@ public class ScreenEncoder implements Device.RotationListener {
         @Override
         public void write(byte[] b) throws IOException {
             synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
                 delegate.write(b);
             }
         }
@@ -327,6 +334,9 @@ public class ScreenEncoder implements Device.RotationListener {
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
             synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
                 delegate.write(b, off, len);
             }
         }
@@ -334,15 +344,25 @@ public class ScreenEncoder implements Device.RotationListener {
         @Override
         public void flush() throws IOException {
             synchronized (lock) {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
                 delegate.flush();
             }
         }
 
         @Override
         public void close() throws IOException {
-            synchronized (lock) {
-                delegate.close();
+            if (closed) {
+                return;
             }
+            synchronized (lock) {
+                if (closed) {
+                    return;
+                }
+                closed = true;
+            }
+            delegate.close();
         }
     }
 }

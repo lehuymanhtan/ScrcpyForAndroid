@@ -609,7 +609,8 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
     }
 
     private boolean handleFourFingerScreenToggle(MotionEvent event) {
-        if (event == null || scrcpy == null || !serviceBound) {
+        Scrcpy currentScrcpy = scrcpy;
+        if (event == null || currentScrcpy == null || !serviceBound) {
             return false;
         }
         int action = event.getActionMasked();
@@ -625,7 +626,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                     pointerCount == 4
                             && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN);
             if (reachedFourFingerThreshold) {
-                if (scrcpy.toggleDisplayPower()) {
+                if (currentScrcpy.toggleDisplayPower()) {
                     remoteScreenExpectedOff = !remoteScreenExpectedOff;
                     fourFingerToggleInProgress = true;
                 }
