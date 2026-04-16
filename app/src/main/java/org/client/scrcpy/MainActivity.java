@@ -632,9 +632,8 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                     runOnUiThread(() -> {
                         if (toggleResult) {
                             remoteScreenExpectedOff = !remoteScreenExpectedOff;
-                        } else {
-                            fourFingerToggleInProgress = false;
                         }
+                        fourFingerToggleInProgress = false;
                     });
                 });
             }
