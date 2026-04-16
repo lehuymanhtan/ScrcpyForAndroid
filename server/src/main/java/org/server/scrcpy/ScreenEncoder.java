@@ -80,7 +80,7 @@ public class ScreenEncoder implements Device.RotationListener {
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            format.setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, frameRate);
+            format.setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, (float) frameRate);
         }
 
         // display the very first frame, and recover from bad quality when no new frames

@@ -12,6 +12,7 @@
   <string name="label_audio_codec">音声コーデック</string>
   <string name="label_x">x</string>
   <string name="action_start">開始</string>
+  <string name="action_view_logs">ログを表示</string>
   <string name="appswitch_button">=</string>
   <string name="home_button">o</string>
   <string name="back_button">\u003C</string>
@@ -51,11 +52,13 @@
     <item>4 Mbps</item>
     <item>2 Mbps</item>
     <item>1 Mbps</item>
+    <item>カスタム</item>
   </string-array>
   <integer-array name="options_bitrate_values">
     <item>6144000</item>
     <item>4096000</item>
     <item>2048000</item>
     <item>1024000</item>
+    <item>0</item>
   </integer-array>
 </resources>

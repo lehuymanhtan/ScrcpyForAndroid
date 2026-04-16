@@ -66,6 +66,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
 
     // 是否直接连接远程
     public final static String START_REMOTE = "start_remote_headless";
+    private static final String[] LOGCAT_COMMAND = new String[]{"logcat", "-d", "-v", "time", "-s", "Scrcpy:*", "ADB:*", "*:S"};
 
     private boolean headlessMode = false;  // 是否为无头模式，不显示操作选项等
     private int screenWidth;
@@ -677,7 +678,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         Process process = null;
         StringBuilder builder = new StringBuilder();
         try {
-            process = new ProcessBuilder("logcat", "-d", "-v", "time", "-s", "Scrcpy:*", "ADB:*", "*:S").redirectErrorStream(true).start();
+            process = new ProcessBuilder(LOGCAT_COMMAND).redirectErrorStream(true).start();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
