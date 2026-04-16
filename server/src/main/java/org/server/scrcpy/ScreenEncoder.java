@@ -337,5 +337,12 @@ public class ScreenEncoder implements Device.RotationListener {
                 delegate.flush();
             }
         }
+
+        @Override
+        public void close() throws IOException {
+            synchronized (lock) {
+                delegate.close();
+            }
+        }
     }
 }
