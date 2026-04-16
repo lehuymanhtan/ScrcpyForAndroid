@@ -318,11 +318,23 @@ public class EventController {
     }
 
     private boolean turnScreenOn() {
-        return device.setDisplayPower(true) || device.isScreenOn() || injectKeycode(KeyEvent.KEYCODE_POWER);
+        if (device.setDisplayPower(true)) {
+            return true;
+        }
+        if (device.isScreenOn()) {
+            return true;
+        }
+        return injectKeycode(KeyEvent.KEYCODE_POWER);
     }
 
     private boolean turnScreenOff() {
-        return device.setDisplayPower(false) || !device.isScreenOn() || injectKeycode(KeyEvent.KEYCODE_POWER);
+        if (device.setDisplayPower(false)) {
+            return true;
+        }
+        if (!device.isScreenOn()) {
+            return true;
+        }
+        return injectKeycode(KeyEvent.KEYCODE_POWER);
     }
 
 }
