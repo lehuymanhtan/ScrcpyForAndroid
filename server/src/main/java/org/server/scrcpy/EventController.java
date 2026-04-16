@@ -1,6 +1,9 @@
 package org.server.scrcpy;
 
 import static org.server.scrcpy.model.CommandPacket.CmdType.VIDEO_NEW_KEY_FRAME;
+import static org.server.scrcpy.model.CommandPacket.CmdType.DISPLAY_POWER_OFF;
+import static org.server.scrcpy.model.CommandPacket.CmdType.DISPLAY_POWER_ON;
+import static org.server.scrcpy.model.CommandPacket.CmdType.DISPLAY_POWER_TOGGLE;
 
 import android.media.MediaCodec;
 import android.os.Build;
@@ -155,6 +158,15 @@ public class EventController {
         switch (Objects.requireNonNull(CommandPacket.CmdType.getFlag(commandPacket.cmdType))) {
             case VIDEO_NEW_KEY_FRAME:
                 screenEncoder.asyncRequestKeyFrame();
+                break;
+            case DISPLAY_POWER_ON:
+                turnScreenOn();
+                break;
+            case DISPLAY_POWER_OFF:
+                turnScreenOff();
+                break;
+            case DISPLAY_POWER_TOGGLE:
+                toggleScreenPower();
                 break;
         }
     }
@@ -330,23 +342,24 @@ public class EventController {
     }
 
     private boolean turnScreenOn() {
-        if (device.setDisplayPower(true)) {
-            return true;
-        }
         if (device.isScreenOn()) {
             return true;
         }
-        return injectKeycode(KeyEvent.KEYCODE_POWER);
+        return device.setDisplayPower(true);
     }
 
     private boolean turnScreenOff() {
-        if (device.setDisplayPower(false)) {
-            return true;
-        }
         if (!device.isScreenOn()) {
             return true;
         }
-        return injectKeycode(KeyEvent.KEYCODE_POWER);
+        return device.setDisplayPower(false);
+    }
+
+    private boolean toggleScreenPower() {
+        if (device.isScreenOn()) {
+            return turnScreenOff();
+        }
+        return turnScreenOn();
     }
 
 }

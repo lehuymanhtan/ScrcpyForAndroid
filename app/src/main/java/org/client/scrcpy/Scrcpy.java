@@ -379,8 +379,30 @@ public class Scrcpy extends Service {
      * 请求关键帧
      */
     public boolean requestNewKeyFrame() throws IOException {
+        return sendCommand(CommandPacket.CmdType.VIDEO_NEW_KEY_FRAME);
+    }
+
+    public boolean toggleDisplayPower() {
+        try {
+            return sendCommand(CommandPacket.CmdType.DISPLAY_POWER_TOGGLE);
+        } catch (IOException e) {
+            Log.e("Scrcpy", "toggleDisplayPower failed", e);
+            return false;
+        }
+    }
+
+    public boolean turnDisplayPowerOn() {
+        try {
+            return sendCommand(CommandPacket.CmdType.DISPLAY_POWER_ON);
+        } catch (IOException e) {
+            Log.e("Scrcpy", "turnDisplayPowerOn failed", e);
+            return false;
+        }
+    }
+
+    private boolean sendCommand(CommandPacket.CmdType cmdType) throws IOException {
         if (LetServceRunning.get() && socketOutputStream != null) {
-            socketOutputStream.write(CommandPacket.toArray(MediaPacket.Type.COMMAND, CommandPacket.CmdType.VIDEO_NEW_KEY_FRAME, new byte[0]));
+            socketOutputStream.write(CommandPacket.toArray(MediaPacket.Type.COMMAND, cmdType, new byte[0]));
             return true;
         }
         return false;

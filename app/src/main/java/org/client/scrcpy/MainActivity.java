@@ -621,7 +621,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                     pointerCount == 4
                             && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN);
             if (reachedFourFingerThreshold) {
-                scrcpy.sendKeyevent(KeyEvent.KEYCODE_POWER);
+                scrcpy.toggleDisplayPower();
                 remoteScreenExpectedOff = !remoteScreenExpectedOff;
                 fourFingerToggleInProgress = true;
             }
@@ -632,7 +632,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
 
     private void ensureHostScreenOnIfNeeded() {
         if (remoteScreenExpectedOff && scrcpy != null && serviceBound) {
-            scrcpy.sendKeyevent(KeyEvent.KEYCODE_WAKEUP);
+            scrcpy.turnDisplayPowerOn();
             remoteScreenExpectedOff = false;
         }
     }

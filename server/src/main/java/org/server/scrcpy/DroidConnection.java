@@ -61,9 +61,42 @@ public final class DroidConnection implements Closeable {
     }
 
     public void close() throws IOException {
-        socket.shutdownInput();
-        socket.shutdownOutput();
-        socket.close();
+        IOException closeException = null;
+        String closePhase = null;
+        if (socket != null) {
+            try {
+                if (!socket.isClosed() && !socket.isInputShutdown()) {
+                    socket.shutdownInput();
+                }
+            } catch (IOException e) {
+                closeException = e;
+                closePhase = "shutdownInput";
+            }
+            try {
+                if (!socket.isClosed() && !socket.isOutputShutdown()) {
+                    socket.shutdownOutput();
+                }
+            } catch (IOException e) {
+                if (closeException == null) {
+                    closeException = e;
+                    closePhase = "shutdownOutput";
+                }
+            }
+            try {
+                if (!socket.isClosed()) {
+                    socket.close();
+                }
+            } catch (IOException e) {
+                if (closeException == null) {
+                    closeException = e;
+                    closePhase = "close";
+                }
+            }
+        }
+        if (closeException != null) {
+            Ln.w("Socket close warning at " + closePhase + ": "
+                    + closeException.getClass().getSimpleName() + " - " + closeException.getMessage());
+        }
     }
 
     public OutputStream getOutputStream() {
@@ -118,4 +151,3 @@ public final class DroidConnection implements Closeable {
     }
 
 }
-
