@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class AudioDecoder {
 
     public static final String MIMETYPE_AUDIO_AAC = "audio/mp4a-latm";
+    public static final String CODEC_AAC = "aac";
 
     private MediaCodec mCodec;
     private Worker mWorker;
@@ -24,6 +25,11 @@ public class AudioDecoder {
 
     private AudioTrack audioTrack;
     private final int SAMPLE_RATE = 48000;
+    private String codec = CODEC_AAC;
+
+    public void setCodec(String codec) {
+        this.codec = CODEC_AAC.equals(codec) ? codec : CODEC_AAC;
+    }
 
     private void initAudioTrack() {
         int bufferSizeInBytes = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);

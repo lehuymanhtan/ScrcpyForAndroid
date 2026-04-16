@@ -23,6 +23,7 @@
 - Enable **ADB-connect/ADB-wireless/ADB over network** on the device to be mirrored. 
 - Open scrcpy-android app and enter ip address of device to be mirrored.
 - Select display parameters and bitrate from drop-down menu(1280x720 and 2Mbps works best).
+- You can also configure advanced options: audio forwarding toggle, turn host screen off, keep host awake, video/audio codec, custom FPS, and custom video/audio bitrate.
 - Set **Navbar** switch if the device to be mirrored has only hardware navigation buttons.
 - Hit **start** button.
 - Accept and trust(check always allow from this computer) the ADB connection prompt on target device(Some custom roms don't have this prompt).
@@ -53,4 +54,3 @@
 
 - [scrcpy-android](https://gitlab.com/las2mile/scrcpy-android)
 - [scrcpy](https://github.com/Genymobile/scrcpy)
-

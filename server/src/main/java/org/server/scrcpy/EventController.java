@@ -32,6 +32,7 @@ public class EventController {
     private final DroidConnection connection;
 
     private final ScreenEncoder screenEncoder;
+    private final Options options;
 
     private final MotionEvent.PointerProperties[] pointerProperties = new MotionEvent.PointerProperties[PointersState.MAX_POINTERS];
     private final MotionEvent.PointerCoords[] pointerCoords = new MotionEvent.PointerCoords[PointersState.MAX_POINTERS];
@@ -43,10 +44,11 @@ public class EventController {
     private boolean hit = false;
     private boolean proximity = false;
 
-    public EventController(Device device, DroidConnection connection, ScreenEncoder screenEncoder) {
+    public EventController(Device device, DroidConnection connection, ScreenEncoder screenEncoder, Options options) {
         this.device = device;
         this.connection = connection;
         this.screenEncoder = screenEncoder;
+        this.options = options;
         initPointers();
     }
 
@@ -146,8 +148,12 @@ public class EventController {
     }
 
     public void control() throws IOException {
-        // on start, turn screen on
-        turnScreenOn();
+        if (options.isTurnScreenOff()) {
+            turnScreenOff();
+        } else {
+            // on start, turn screen on
+            turnScreenOn();
+        }
 
         while (true) {
             //           handleEvent();
@@ -313,6 +319,10 @@ public class EventController {
 
     private boolean turnScreenOn() {
         return device.isScreenOn() || injectKeycode(KeyEvent.KEYCODE_POWER);
+    }
+
+    private boolean turnScreenOff() {
+        return !device.isScreenOn() || injectKeycode(KeyEvent.KEYCODE_POWER);
     }
 
 }

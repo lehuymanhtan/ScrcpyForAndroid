@@ -5,6 +5,11 @@
     <string name="label_video_resolution">Resolution</string>
     <string name="delay_control">Delay Control</string>
     <string name="label_video_bitrate">Bitrate</string>
+    <string name="label_custom_video_bitrate">Custom video bitrate (bps, optional)</string>
+    <string name="label_custom_audio_bitrate">Custom audio bitrate (bps, optional)</string>
+    <string name="label_custom_fps">Custom FPS (optional)</string>
+    <string name="label_video_codec">Video codec</string>
+    <string name="label_audio_codec">Audio codec</string>
     <string name="label_x">x</string>
     <string name="action_start">Start</string>
     <string name="appswitch_button">=</string>
@@ -12,6 +17,9 @@
     <string name="back_button">\u003C</string>
     <string name="switch0">Viewing mode (no control)</string>
     <string name="switch1">Bottom control button (back button)</string>
+    <string name="switch_disable_audio_forward">Do not route audio to client (play on host)</string>
+    <string name="switch_turn_screen_off">Turn host screen off</string>
+    <string name="switch_keep_awake">Keep host awake</string>
 
     <string name="connect_tips">Tips: You need to enable wireless debugging on your phone\n\t\tReset adb port command: adb tcpip 5555</string>
     <string name="please_wait">Connecting …</string>
@@ -60,6 +68,14 @@
         <item>1024000</item>
     </integer-array>
 
-</resources>
+    <string-array name="options_video_codec_values">
+        <item>h264</item>
+        <item>h265</item>
+    </string-array>
 
+    <string-array name="options_audio_codec_values">
+        <item>aac</item>
+    </string-array>
+
+</resources>
 

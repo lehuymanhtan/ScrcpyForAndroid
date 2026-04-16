@@ -39,6 +39,10 @@ public class ScreenEncoder implements Device.RotationListener {
     private int bitRate;
     private int frameRate;
     private int iFrameInterval;
+    private String videoMimeType = "video/avc";
+    private boolean audioForward;
+    private String audioCodec;
+    private int audioBitRate;
 
     public ScreenEncoder(int bitRate, int frameRate, int iFrameInterval) {
         this.bitRate = bitRate;
@@ -50,13 +54,21 @@ public class ScreenEncoder implements Device.RotationListener {
         this(bitRate, DEFAULT_FRAME_RATE, DEFAULT_I_FRAME_INTERVAL);
     }
 
-    private static MediaCodec createCodec() throws IOException {
-        return MediaCodec.createEncoderByType("video/avc");
+    public ScreenEncoder(Options options) {
+        this(options.getBitRate(), options.getMaxFps() > 0 ? options.getMaxFps() : DEFAULT_FRAME_RATE, DEFAULT_I_FRAME_INTERVAL);
+        this.videoMimeType = Options.VIDEO_CODEC_H265.equals(options.getVideoCodec()) ? "video/hevc" : "video/avc";
+        this.audioForward = options.isAudioForward();
+        this.audioCodec = options.getAudioCodec();
+        this.audioBitRate = options.getAudioBitRate();
     }
 
-    private static MediaFormat createFormat(int bitRate, int frameRate, int iFrameInterval) throws IOException {
+    private MediaCodec createCodec() throws IOException {
+        return MediaCodec.createEncoderByType(videoMimeType);
+    }
+
+    private MediaFormat createFormat(int bitRate, int frameRate, int iFrameInterval) throws IOException {
         MediaFormat format = new MediaFormat();
-        format.setString(MediaFormat.KEY_MIME, "video/avc");
+        format.setString(MediaFormat.KEY_MIME, videoMimeType);
         format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
         format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
@@ -121,7 +133,8 @@ public class ScreenEncoder implements Device.RotationListener {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                AudioEncoder audioEncoder = new AudioEncoder(128000);
+                AudioEncoder audioEncoder = new AudioEncoder(audioBitRate);
+                audioEncoder.setCodec(audioCodec);
                 try {
                     audioEncoder.streamScreen(outputStream);
                 } catch (IOException e) {
@@ -148,7 +161,9 @@ public class ScreenEncoder implements Device.RotationListener {
         }
         outputStream.write(array, 0, array.length);   // Sending device resolution
 
-        startAudioCapture(outputStream);  // start audio capture
+        if (audioForward) {
+            startAudioCapture(outputStream);  // start audio capture
+        }
 
         MediaFormat format = createFormat(bitRate, frameRate, iFrameInterval);
         device.setRotationListener(this);

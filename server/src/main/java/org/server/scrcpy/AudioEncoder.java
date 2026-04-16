@@ -23,8 +23,10 @@ import java.nio.ByteBuffer;
 
 public class AudioEncoder {
     public static final String MIMETYPE_AUDIO_AAC = "audio/mp4a-latm";
+    public static final String CODEC_AAC = "aac";
 
     private int bitRate;
+    private String codec = CODEC_AAC;
 
     private HandlerThread mediaCodecThread;
 
@@ -38,14 +40,22 @@ public class AudioEncoder {
         this.bitRate = bitRate;
     }
 
-    private static MediaCodec createCodec() throws IOException {
-        return MediaCodec.createEncoderByType(MIMETYPE_AUDIO_AAC);
+    public void setCodec(String codec) {
+        this.codec = CODEC_AAC.equals(codec) ? codec : CODEC_AAC;
     }
 
-    private static MediaFormat createFormat(int bitRate) throws IOException {
+    private String getMimeType() {
+        return MIMETYPE_AUDIO_AAC;
+    }
+
+    private MediaCodec createCodec() throws IOException {
+        return MediaCodec.createEncoderByType(getMimeType());
+    }
+
+    private MediaFormat createFormat(int bitRate) throws IOException {
 
         MediaFormat format = new MediaFormat();
-        format.setString(MediaFormat.KEY_MIME, MIMETYPE_AUDIO_AAC);
+        format.setString(MediaFormat.KEY_MIME, getMimeType());
         format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
         format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 2);  // 通道数固定
         format.setInteger(MediaFormat.KEY_SAMPLE_RATE, 48000);  // 采样率固定

@@ -75,7 +75,14 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
     SensorManager sensorManager;
     private SendCommands sendCommands;
     private int videoBitrate;
+    private int audioBitrate = 128000;
+    private int maxFps = 60;
     private int delayControl;
+    private String videoCodec = "h264";
+    private String audioCodec = "aac";
+    private boolean disableAudioForward;
+    private boolean turnScreenOff;
+    private boolean keepAwake;
     private Context context;
     private String serverAdr = null;
     private SurfaceView surfaceView;
@@ -97,7 +104,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                     Progress.showDialog(MainActivity.this, getString(R.string.please_wait));
                 }
                 scrcpy.start(surface, Scrcpy.LOCAL_IP + ":" + Scrcpy.LOCAL_FORWART_PORT,
-                        screenHeight, screenWidth, delayControl);
+                        screenHeight, screenWidth, delayControl, !disableAudioForward, videoCodec, audioCodec);
                 ThreadUtils.workPost(() -> {
                     boolean success = AdbHelper.executeWithTimeout(() -> {
                         while (!scrcpy.check_socket_connection()) {
@@ -322,8 +329,14 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
 
     public void get_saved_preferences() {
         final EditText editTextServerHost = findViewById(R.id.editText_server_host);
+        final EditText customFpsEditText = findViewById(R.id.edit_custom_fps);
+        final EditText customVideoBitrateEditText = findViewById(R.id.edit_custom_video_bitrate);
+        final EditText customAudioBitrateEditText = findViewById(R.id.edit_custom_audio_bitrate);
         final Switch aSwitch0 = findViewById(R.id.switch0);
         final Switch aSwitch1 = findViewById(R.id.switch1);
+        final Switch disableAudioSwitch = findViewById(R.id.switch_disable_audio_forward);
+        final Switch turnScreenOffSwitch = findViewById(R.id.switch_turn_screen_off);
+        final Switch keepAwakeSwitch = findViewById(R.id.switch_keep_awake);
         String historySpServerAdr = PreUtils.get(context, Constant.CONTROL_REMOTE_ADDR, "");
         if (TextUtils.isEmpty(historySpServerAdr)) {
             String[] historyList = getHistoryList();
@@ -335,9 +348,27 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         }
         aSwitch0.setChecked(PreUtils.get(context, Constant.CONTROL_NO, false));
         aSwitch1.setChecked(PreUtils.get(context, Constant.CONTROL_NAV, false));
+        disableAudioSwitch.setChecked(PreUtils.get(context, Constant.PREFERENCE_DISABLE_AUDIO_FORWARD, false));
+        turnScreenOffSwitch.setChecked(PreUtils.get(context, Constant.PREFERENCE_TURN_SCREEN_OFF, false));
+        keepAwakeSwitch.setChecked(PreUtils.get(context, Constant.PREFERENCE_KEEP_AWAKE, false));
         setSpinner(R.array.options_resolution_values, R.id.spinner_video_resolution, Constant.PREFERENCE_SPINNER_RESOLUTION);
         setSpinner(R.array.options_bitrate_keys, R.id.spinner_video_bitrate, Constant.PREFERENCE_SPINNER_BITRATE);
         setSpinner(R.array.options_delay_keys, R.id.delay_control_spinner, Constant.PREFERENCE_SPINNER_DELAY);
+        setSpinner(R.array.options_video_codec_values, R.id.spinner_video_codec, Constant.PREFERENCE_SPINNER_VIDEO_CODEC);
+        setSpinner(R.array.options_audio_codec_values, R.id.spinner_audio_codec, Constant.PREFERENCE_SPINNER_AUDIO_CODEC);
+
+        String savedFps = PreUtils.get(context, Constant.PREFERENCE_CUSTOM_FPS, "");
+        if (!TextUtils.isEmpty(savedFps)) {
+            customFpsEditText.setText(savedFps);
+        }
+        String savedVideoBitrate = PreUtils.get(context, Constant.PREFERENCE_CUSTOM_VIDEO_BITRATE, "");
+        if (!TextUtils.isEmpty(savedVideoBitrate)) {
+            customVideoBitrateEditText.setText(savedVideoBitrate);
+        }
+        String savedAudioBitrate = PreUtils.get(context, Constant.PREFERENCE_CUSTOM_AUDIO_BITRATE, "");
+        if (!TextUtils.isEmpty(savedAudioBitrate)) {
+            customAudioBitrateEditText.setText(savedAudioBitrate);
+        }
         if (aSwitch0.isChecked()) {
             aSwitch1.setClickable(false);
             aSwitch1.setTextColor(Color.GRAY);
@@ -468,10 +499,18 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         }
         final Spinner videoResolutionSpinner = findViewById(R.id.spinner_video_resolution);
         final Spinner videoBitrateSpinner = findViewById(R.id.spinner_video_bitrate);
+        final Spinner videoCodecSpinner = findViewById(R.id.spinner_video_codec);
+        final Spinner audioCodecSpinner = findViewById(R.id.spinner_audio_codec);
         final Spinner delayControlSpinner = findViewById(R.id.delay_control_spinner);
+        final EditText customFpsEditText = findViewById(R.id.edit_custom_fps);
+        final EditText customVideoBitrateEditText = findViewById(R.id.edit_custom_video_bitrate);
+        final EditText customAudioBitrateEditText = findViewById(R.id.edit_custom_audio_bitrate);
         final Switch a_Switch0 = findViewById(R.id.switch0);
         boolean no_control = a_Switch0.isChecked();
         final Switch a_Switch1 = findViewById(R.id.switch1);
+        final Switch disableAudioSwitch = findViewById(R.id.switch_disable_audio_forward);
+        final Switch turnScreenOffSwitch = findViewById(R.id.switch_turn_screen_off);
+        final Switch keepAwakeSwitch = findViewById(R.id.switch_keep_awake);
         boolean nav = a_Switch1.isChecked();
         PreUtils.put(context, Constant.CONTROL_NO, no_control);
         PreUtils.put(context, Constant.CONTROL_NAV, nav);
@@ -481,6 +520,26 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         screenWidth = Integer.parseInt(videoResolutions[1]);
         videoBitrate = getResources().getIntArray(R.array.options_bitrate_values)[videoBitrateSpinner.getSelectedItemPosition()];
         delayControl = getResources().getIntArray(R.array.options_delay_values)[delayControlSpinner.getSelectedItemPosition()];
+        videoCodec = getResources().getStringArray(R.array.options_video_codec_values)[videoCodecSpinner.getSelectedItemPosition()];
+        audioCodec = getResources().getStringArray(R.array.options_audio_codec_values)[audioCodecSpinner.getSelectedItemPosition()];
+
+        String customVideoBitrate = customVideoBitrateEditText.getText().toString().trim();
+        String customAudioBitrate = customAudioBitrateEditText.getText().toString().trim();
+        String customFps = customFpsEditText.getText().toString().trim();
+        videoBitrate = parsePositiveIntOrDefault(customVideoBitrate, videoBitrate);
+        audioBitrate = parsePositiveIntOrDefault(customAudioBitrate, 128000);
+        maxFps = parsePositiveIntOrDefault(customFps, 60);
+
+        disableAudioForward = disableAudioSwitch.isChecked();
+        turnScreenOff = turnScreenOffSwitch.isChecked();
+        keepAwake = keepAwakeSwitch.isChecked();
+
+        PreUtils.put(context, Constant.PREFERENCE_CUSTOM_VIDEO_BITRATE, customVideoBitrate);
+        PreUtils.put(context, Constant.PREFERENCE_CUSTOM_AUDIO_BITRATE, customAudioBitrate);
+        PreUtils.put(context, Constant.PREFERENCE_CUSTOM_FPS, customFps);
+        PreUtils.put(context, Constant.PREFERENCE_DISABLE_AUDIO_FORWARD, disableAudioForward);
+        PreUtils.put(context, Constant.PREFERENCE_TURN_SCREEN_OFF, turnScreenOff);
+        PreUtils.put(context, Constant.PREFERENCE_KEEP_AWAKE, keepAwake);
     }
 
     private String[] getHistoryList() {
@@ -499,6 +558,18 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             e.printStackTrace();
         }
         return new String[]{};
+    }
+
+    private int parsePositiveIntOrDefault(String value, int defaultValue) {
+        if (TextUtils.isEmpty(value)) {
+            return defaultValue;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     /**
@@ -765,7 +836,8 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                         serverPort,
                         localForwardPort,
                         Scrcpy.LOCAL_IP,
-                        videoBitrate, Math.max(screenHeight, screenWidth));
+                        videoBitrate, Math.max(screenHeight, screenWidth), maxFps, videoCodec, audioCodec, audioBitrate,
+                        !disableAudioForward, turnScreenOff, keepAwake);
                 if (sendStatus == SendCommands.CmdStatus.SUCCESS) {
                     ThreadUtils.post(() -> {
                         if (!MainActivity.this.isFinishing()) {

@@ -25,11 +25,16 @@ public class SendCommands {
 
     }
 
-    public CmdStatus SendAdbCommands(Context context, final String ip, int port, int forwardport, String localip, int bitrate, int size) {
-        return this.SendAdbCommands(context, null, ip, port, forwardport, localip, bitrate, size);
+    public CmdStatus SendAdbCommands(Context context, final String ip, int port, int forwardport, String localip,
+                                     int bitrate, int size, int maxFps, String videoCodec, String audioCodec,
+                                     int audioBitrate, boolean audioForward, boolean turnScreenOff, boolean keepAwake) {
+        return this.SendAdbCommands(context, null, ip, port, forwardport, localip, bitrate, size, maxFps,
+                videoCodec, audioCodec, audioBitrate, audioForward, turnScreenOff, keepAwake);
     }
 
-    public CmdStatus SendAdbCommands(Context context, final byte[] fileBase64, final String ip, int port, int forwardport, String localip, int bitrate, int size) {
+    public CmdStatus SendAdbCommands(Context context, final byte[] fileBase64, final String ip, int port, int forwardport, String localip,
+                                     int bitrate, int size, int maxFps, String videoCodec, String audioCodec,
+                                     int audioBitrate, boolean audioForward, boolean turnScreenOff, boolean keepAwake) {
         AtomicReference<CmdStatus> status = new AtomicReference<>(CmdStatus.RUNNING);
         String[] commands = new String[]{
                 "-s", ip + ":" + port,
@@ -40,7 +45,15 @@ public class SendCommands {
                 "org.server.scrcpy.Server",
                 "/" + localip,
                 Long.toString(size),
-                Long.toString(bitrate) + ";"
+                Long.toString(bitrate),
+                Boolean.toString(false),
+                Long.toString(maxFps),
+                videoCodec,
+                audioCodec,
+                Long.toString(audioBitrate),
+                Boolean.toString(audioForward),
+                Boolean.toString(turnScreenOff),
+                Boolean.toString(keepAwake)
         };
         ThreadUtils.execute(() -> {
             try {

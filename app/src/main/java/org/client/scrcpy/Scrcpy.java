@@ -59,6 +59,9 @@ public class Scrcpy extends Service {
 
     private DataInputStream socketInputStream = null;
     private DataOutputStream socketOutputStream = null;
+    private boolean audioForward = true;
+    private String videoCodec = "h264";
+    private String audioCodec = "aac";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -75,19 +78,29 @@ public class Scrcpy extends Service {
         this.surface = NewSurface;
 
         videoDecoder.start();
-        audioDecoder.start();
+        if (audioForward) {
+            audioDecoder.start();
+        }
 
 
         updateAvailable.set(true);
 
     }
 
-    public void start(Surface surface, String serverAdr, int screenHeight, int screenWidth, int delay) {
+    public void start(Surface surface, String serverAdr, int screenHeight, int screenWidth, int delay,
+                      boolean audioForward, String videoCodec, String audioCodec) {
+        this.audioForward = audioForward;
+        this.videoCodec = TextUtils.isEmpty(videoCodec) ? "h264" : videoCodec;
+        this.audioCodec = TextUtils.isEmpty(audioCodec) ? "aac" : audioCodec;
         this.videoDecoder = new VideoDecoder();
+        videoDecoder.setCodec(this.videoCodec);
         videoDecoder.start();
 
         this.audioDecoder = new AudioDecoder();
-        audioDecoder.start();
+        audioDecoder.setCodec(this.audioCodec);
+        if (this.audioForward) {
+            audioDecoder.start();
+        }
 
         String[] serverInfo = Util.getServerHostAndPort(serverAdr);
         this.serverHost = serverInfo[0];
@@ -120,7 +133,9 @@ public class Scrcpy extends Service {
             videoDecoder.start();
         }
         if (audioDecoder != null) {
-            audioDecoder.start();
+            if (audioForward) {
+                audioDecoder.start();
+            }
         }
         updateAvailable.set(true);
 
@@ -237,9 +252,13 @@ public class Scrcpy extends Service {
     private void startConnection(String ip, int port, int delay) {
 
         videoDecoder = new VideoDecoder();
+        videoDecoder.setCodec(videoCodec);
         videoDecoder.start();
         audioDecoder = new AudioDecoder();
-        audioDecoder.start();
+        audioDecoder.setCodec(audioCodec);
+        if (audioForward) {
+            audioDecoder.start();
+        }
 
         DataInputStream dataInputStream = null;
         DataOutputStream dataOutputStream = null;
@@ -466,6 +485,9 @@ public class Scrcpy extends Service {
                         }
                         first_time = false;
                     } else if (MediaPacket.Type.getType(packet[0]) == MediaPacket.Type.AUDIO) {
+                        if (!audioForward) {
+                            continue;
+                        }
                         AudioPacket audioPacket = AudioPacket.readHead(packet);
                         // byte[] data = audioPacket.data;
                         if (audioPacket.flag == AudioPacket.Flag.CONFIG) {
