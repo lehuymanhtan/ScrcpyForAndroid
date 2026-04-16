@@ -141,8 +141,6 @@ public final class Server {
             contentProvider.putValue(ContentProvider.TABLE_GLOBAL, "stay_on_while_plugged_in", "3");
         } catch (SettingsException e) {
             Ln.w("Could not set keep-awake option: " + e.getMessage());
-        } catch (IOException e) {
-            Ln.w("Could not close settings provider: " + e.getMessage());
         }
     }
 
