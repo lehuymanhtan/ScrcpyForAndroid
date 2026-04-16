@@ -254,23 +254,24 @@ public class EventController {
         pointer.setUp(pointerUp);
 
         int pointerCount = pointersState.update(pointerProperties, pointerCoords);
+        int finalAction = action;
         if (pointerCount == 1) {
             if (actionType == MotionEvent.ACTION_POINTER_UP) {
-                action = MotionEvent.ACTION_UP;
+                finalAction = MotionEvent.ACTION_UP;
             } else if (actionType == MotionEvent.ACTION_POINTER_DOWN) {
-                action = MotionEvent.ACTION_DOWN;
+                finalAction = MotionEvent.ACTION_DOWN;
             }
-            if (action == MotionEvent.ACTION_DOWN) {
+            if (finalAction == MotionEvent.ACTION_DOWN) {
                 lastMouseDown = now;
             }
         } else {
             // secondary pointers must use ACTION_POINTER_* ORed with the pointerIndex
             // 与原版 scrcpy 相比，Android 传输的触控信息已经包含 ACTION_POINTER_UP ，此处需要新增兼容，否则多点触控会出现异常
             if (action == MotionEvent.ACTION_UP || actionType == MotionEvent.ACTION_POINTER_UP) {
-                action = MotionEvent.ACTION_POINTER_UP | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
+                finalAction = MotionEvent.ACTION_POINTER_UP | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
                 // Ln.w("按钮 Pointer 抬起");
             } else if (action == MotionEvent.ACTION_DOWN || actionType == MotionEvent.ACTION_POINTER_DOWN) {
-                action = MotionEvent.ACTION_POINTER_DOWN | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
+                finalAction = MotionEvent.ACTION_POINTER_DOWN | (pointerIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
                 // Ln.w("按钮 Pointer 按下");
             }
         }
@@ -332,7 +333,7 @@ public class EventController {
 //            }
 //        }
 
-        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, action, pointerCount, pointerProperties, pointerCoords, 0, button, 1f, 1f,
+        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, finalAction, pointerCount, pointerProperties, pointerCoords, 0, button, 1f, 1f,
                 0, 0, source, 0);
 
         // return Device.injectEvent(event, targetDisplayId, Device.INJECT_MODE_ASYNC);
@@ -362,8 +363,22 @@ public class EventController {
         }
 
         long now = SystemClock.uptimeMillis();
-        MotionEvent cancelEvent = MotionEvent.obtain(lastMouseDown, now, MotionEvent.ACTION_CANCEL, pointerCount, pointerProperties, pointerCoords, 0, 0, 1f, 1f,
-                0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
+        MotionEvent cancelEvent = MotionEvent.obtain(
+                lastMouseDown,
+                now,
+                MotionEvent.ACTION_CANCEL,
+                pointerCount,
+                pointerProperties,
+                pointerCoords,
+                0,
+                0,
+                1f,
+                1f,
+                0,
+                0,
+                InputDevice.SOURCE_TOUCHSCREEN,
+                0
+        );
         injectEvent(cancelEvent);
         pointersState.clear();
     }
