@@ -27,14 +27,16 @@ public class SendCommands {
 
     public CmdStatus SendAdbCommands(Context context, final String ip, int port, int forwardport, String localip,
                                      int bitrate, int size, int maxFps, String videoCodec, String audioCodec,
-                                     int audioBitrate, boolean audioForward, boolean turnScreenOff, boolean keepAwake) {
+                                     int audioBitrate, boolean audioForward, boolean turnScreenOff, boolean keepAwake,
+                                     boolean tunnelForward) {
         return this.SendAdbCommands(context, null, ip, port, forwardport, localip, bitrate, size, maxFps,
-                videoCodec, audioCodec, audioBitrate, audioForward, turnScreenOff, keepAwake);
+                videoCodec, audioCodec, audioBitrate, audioForward, turnScreenOff, keepAwake, tunnelForward);
     }
 
     public CmdStatus SendAdbCommands(Context context, final byte[] fileBase64, final String ip, int port, int forwardport, String localip,
                                      int bitrate, int size, int maxFps, String videoCodec, String audioCodec,
-                                     int audioBitrate, boolean audioForward, boolean turnScreenOff, boolean keepAwake) {
+                                     int audioBitrate, boolean audioForward, boolean turnScreenOff, boolean keepAwake,
+                                     boolean tunnelForward) {
         AtomicReference<CmdStatus> status = new AtomicReference<>(CmdStatus.RUNNING);
         String[] commands = new String[]{
                 "-s", ip + ":" + port,
@@ -46,7 +48,7 @@ public class SendCommands {
                 "/" + localip,
                 Long.toString(size),
                 Long.toString(bitrate),
-                Boolean.toString(false),
+                Boolean.toString(tunnelForward),
                 Long.toString(maxFps),
                 videoCodec,
                 audioCodec,

@@ -93,6 +93,6 @@ public class Options {
     }
 
     public void setAudioCodec(String audioCodec) {
-        this.audioCodec = AUDIO_CODEC_AAC;
+        this.audioCodec = AUDIO_CODEC_AAC.equals(audioCodec) ? audioCodec : AUDIO_CODEC_AAC;
     }
 }

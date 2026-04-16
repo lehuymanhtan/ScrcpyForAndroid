@@ -156,7 +156,7 @@ public class ScrcpyHost implements Scrcpy.ServiceCallbacks {
                     localForwardPort,
                     Scrcpy.LOCAL_IP,
                     videoBitrate, Math.max(screenHeight, screenWidth), 60, "h264", "aac", 128000,
-                    true, false, false) == SendCommands.CmdStatus.SUCCESS) {
+                    true, false, false, false) == SendCommands.CmdStatus.SUCCESS) {
                 start_screen_copy_magic();
             } else {
                 Toast.makeText(context, "Network OR ADB connection failed", Toast.LENGTH_SHORT).show();
