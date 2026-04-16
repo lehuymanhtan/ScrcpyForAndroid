@@ -645,8 +645,12 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
     private void ensureHostScreenOnIfNeeded() {
         Scrcpy currentScrcpy = scrcpy;
         if (remoteScreenExpectedOff && currentScrcpy != null && serviceBound) {
-            remoteScreenExpectedOff = false;
-            ThreadUtils.execute(currentScrcpy::turnDisplayPowerOn);
+            ThreadUtils.execute(() -> {
+                boolean turnedOn = currentScrcpy.turnDisplayPowerOn();
+                if (turnedOn) {
+                    runOnUiThread(() -> remoteScreenExpectedOff = false);
+                }
+            });
         }
     }
 
