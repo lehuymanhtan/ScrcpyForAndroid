@@ -302,6 +302,10 @@ public class ScreenEncoder implements Device.RotationListener {
         return !eof;
     }
 
+    /**
+     * Serializes all stream writes from video and audio encoder threads so packet bytes are never interleaved.
+     * This preserves packet framing over a shared socket output stream.
+     */
     private static final class SynchronizedOutputStream extends OutputStream {
         private final OutputStream delegate;
         private final Object lock = new Object();
