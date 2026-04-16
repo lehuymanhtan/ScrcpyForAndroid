@@ -174,29 +174,36 @@ public class EventController {
     }
 
     public void control() throws IOException {
-        if (options.isTurnScreenOff()) {
-            turnScreenOff();
-        } else {
-            // on start, turn screen on
-            turnScreenOn();
-        }
+        try {
+            if (options.isTurnScreenOff()) {
+                turnScreenOff();
+            } else {
+                // on start, turn screen on
+                turnScreenOn();
+            }
 
-        while (true) {
-            //           handleEvent();
-            MediaPacket mediaPacket = connection.NewReceiveEvent();
-            try {
-                if (mediaPacket != null) {
-                    switch (mediaPacket.type) {
-                        case CONTROL:
-                            injectControlEvent(((ControlPacket) mediaPacket).data);
-                            break;
-                        case COMMAND:
-                            extraCommand((CommandPacket) mediaPacket);
-                            break;
+            while (true) {
+                //           handleEvent();
+                MediaPacket mediaPacket = connection.NewReceiveEvent();
+                try {
+                    if (mediaPacket != null) {
+                        switch (mediaPacket.type) {
+                            case CONTROL:
+                                injectControlEvent(((ControlPacket) mediaPacket).data);
+                                break;
+                            case COMMAND:
+                                extraCommand((CommandPacket) mediaPacket);
+                                break;
+                        }
                     }
+                } catch (Exception e) {
+                    Log.e("Scrcpy", "error : " + e);
                 }
-            } catch (Exception e) {
-                Log.e("Scrcpy", "error : " + e);
+            }
+        } finally {
+            releasePendingTouches();
+            if (displayPowerOffByController) {
+                turnScreenOn();
             }
         }
     }
@@ -248,6 +255,11 @@ public class EventController {
 
         int pointerCount = pointersState.update(pointerProperties, pointerCoords);
         if (pointerCount == 1) {
+            if (actionType == MotionEvent.ACTION_POINTER_UP) {
+                action = MotionEvent.ACTION_UP;
+            } else if (actionType == MotionEvent.ACTION_POINTER_DOWN) {
+                action = MotionEvent.ACTION_DOWN;
+            }
             if (action == MotionEvent.ACTION_DOWN) {
                 lastMouseDown = now;
             }
@@ -341,6 +353,19 @@ public class EventController {
 
     private boolean injectEvent(InputEvent event) {
         return device.injectInputEvent(event, InputManager.INJECT_INPUT_EVENT_MODE_ASYNC);
+    }
+
+    private void releasePendingTouches() {
+        int pointerCount = pointersState.update(pointerProperties, pointerCoords);
+        if (pointerCount == 0) {
+            return;
+        }
+
+        long now = SystemClock.uptimeMillis();
+        MotionEvent cancelEvent = MotionEvent.obtain(lastMouseDown, now, MotionEvent.ACTION_CANCEL, pointerCount, pointerProperties, pointerCoords, 0, 0, 1f, 1f,
+                0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
+        injectEvent(cancelEvent);
+        pointersState.clear();
     }
 
     private boolean turnScreenOn() {

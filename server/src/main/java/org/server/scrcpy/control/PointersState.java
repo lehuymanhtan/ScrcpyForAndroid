@@ -103,4 +103,8 @@ public class PointersState {
             }
         }
     }
+
+    public void clear() {
+        pointers.clear();
+    }
 }
