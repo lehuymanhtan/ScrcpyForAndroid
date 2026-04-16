@@ -2,11 +2,13 @@ package org.server.scrcpy;
 
 import org.server.scrcpy.device.Point;
 import android.os.Build;
+import android.os.IBinder;
 import android.os.RemoteException;
 import android.view.IRotationWatcher;
 import android.view.InputEvent;
 
 import org.server.scrcpy.wrappers.ServiceManager;
+import org.server.scrcpy.wrappers.SurfaceControl;
 
 public final class Device {
 
@@ -94,6 +96,16 @@ public final class Device {
 
     public boolean isScreenOn() {
         return ServiceManager.getPowerManager().isScreenOn();
+    }
+
+    public boolean setDisplayPower(boolean on) {
+        int mode = on ? SurfaceControl.POWER_MODE_NORMAL : SurfaceControl.POWER_MODE_OFF;
+        IBinder displayToken = SurfaceControl.getBuiltInDisplay();
+        if (displayToken == null) {
+            Ln.e("Could not get built-in display");
+            return false;
+        }
+        return SurfaceControl.setDisplayPowerMode(displayToken, mode);
     }
 
     public void registerRotationWatcher(IRotationWatcher rotationWatcher) {
