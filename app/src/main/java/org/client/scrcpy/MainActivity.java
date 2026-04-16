@@ -451,7 +451,11 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                 if (handleFourFingerScreenToggle(event)) {
                     return true;
                 }
-                return scrcpy.touchevent(event, landscape, surfaceView.getWidth(), surfaceView.getHeight());
+                Scrcpy currentScrcpy = scrcpy;
+                if (currentScrcpy == null || !serviceBound) {
+                    return false;
+                }
+                return currentScrcpy.touchevent(event, landscape, surfaceView.getWidth(), surfaceView.getHeight());
             });
         }
 
@@ -621,9 +625,10 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                     pointerCount == 4
                             && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN);
             if (reachedFourFingerThreshold) {
-                scrcpy.toggleDisplayPower();
-                remoteScreenExpectedOff = !remoteScreenExpectedOff;
-                fourFingerToggleInProgress = true;
+                if (scrcpy.toggleDisplayPower()) {
+                    remoteScreenExpectedOff = !remoteScreenExpectedOff;
+                    fourFingerToggleInProgress = true;
+                }
             }
             return true;
         }

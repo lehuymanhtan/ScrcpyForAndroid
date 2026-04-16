@@ -19,21 +19,26 @@ public final class Server {
         Workarounds.apply();  // init content
 
         final Device device = new Device(options);
-        try (DroidConnection connection = DroidConnection.open(ip)) {
-            applyKeepAwake(options);
-            ScreenEncoder screenEncoder = new ScreenEncoder(options);
+        try {
+            try (DroidConnection connection = DroidConnection.open(ip)) {
+                applyKeepAwake(options);
+                ScreenEncoder screenEncoder = new ScreenEncoder(options);
 
-            // asynchronous
-            startEventController(device, connection, screenEncoder, options);
+                // asynchronous
+                startEventController(device, connection, screenEncoder, options);
 
-            try {
-                // synchronous
-                screenEncoder.streamScreen(device, connection.getOutputStream());
-            } catch (IOException e) {
-                e.printStackTrace();
-                // this is expected on close
-                Ln.d("Screen streaming stopped");
-
+                try {
+                    // synchronous
+                    screenEncoder.streamScreen(device, connection.getOutputStream());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    // this is expected on close
+                    Ln.d("Screen streaming stopped");
+                }
+            }
+        } finally {
+            if (!device.setDisplayPower(true)) {
+                Ln.w("Could not restore display power on server exit");
             }
         }
     }

@@ -157,6 +157,7 @@ public class ScreenEncoder implements Device.RotationListener {
     }
 
     public void streamScreen(Device device, OutputStream outputStream) throws IOException {
+        OutputStream synchronizedOutputStream = new SynchronizedOutputStream(outputStream);
         // Log.d("ScreenCapture", buildDisplayListMessage());
         int[] buf = new int[]{device.getScreenInfo().getDeviceSize().getWidth(), device.getScreenInfo().getDeviceSize().getHeight()};
         final byte[] array = new byte[buf.length * 4];   // https://stackoverflow.com/questions/2183240/java-integer-to-byte-array
@@ -167,10 +168,10 @@ public class ScreenEncoder implements Device.RotationListener {
             array[j * 4 + 2] = (byte) ((c & 0xFF00) >> 8);
             array[j * 4 + 3] = (byte) (c & 0xFF);
         }
-        outputStream.write(array, 0, array.length);   // Sending device resolution
+        synchronizedOutputStream.write(array, 0, array.length);   // Sending device resolution
 
         if (audioForward) {
-            startAudioCapture(outputStream);  // start audio capture
+            startAudioCapture(synchronizedOutputStream);  // start audio capture
         }
 
         MediaFormat format = createFormat(bitRate, frameRate, iFrameInterval);
@@ -195,7 +196,7 @@ public class ScreenEncoder implements Device.RotationListener {
                     capture.start(surface);
                     codec.start();
 
-                    alive = encode(codec, outputStream);
+                    alive = encode(codec, synchronizedOutputStream);
                     errorCount = 0;
                 } catch (IllegalStateException | IllegalArgumentException e) {
                     Ln.e("Encoding error: " + e.getClass().getName(), e);
@@ -299,5 +300,42 @@ public class ScreenEncoder implements Device.RotationListener {
         }
 
         return !eof;
+    }
+
+    private static final class SynchronizedOutputStream extends OutputStream {
+        private final OutputStream delegate;
+        private final Object lock = new Object();
+
+        SynchronizedOutputStream(OutputStream delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            synchronized (lock) {
+                delegate.write(b);
+            }
+        }
+
+        @Override
+        public void write(byte[] b) throws IOException {
+            synchronized (lock) {
+                delegate.write(b);
+            }
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            synchronized (lock) {
+                delegate.write(b, off, len);
+            }
+        }
+
+        @Override
+        public void flush() throws IOException {
+            synchronized (lock) {
+                delegate.flush();
+            }
+        }
     }
 }
