@@ -13,6 +13,10 @@
     <string name="label_x">x</string>
     <string name="action_start">启动连接</string>
     <string name="action_view_logs">查看日志</string>
+    <string name="title_logs">日志</string>
+    <string name="action_refresh_logs">刷新</string>
+    <string name="logs_empty">没有找到 Scrcpy 标签日志。</string>
+    <string name="logs_load_failed">加载日志失败</string>
     <string name="appswitch_button">=</string>
     <string name="home_button">o</string>
     <string name="back_button">\u003C</string>

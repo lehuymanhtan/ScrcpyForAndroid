@@ -13,6 +13,10 @@
   <string name="label_x">x</string>
   <string name="action_start">開始</string>
   <string name="action_view_logs">ログを表示</string>
+  <string name="title_logs">ログ</string>
+  <string name="action_refresh_logs">更新</string>
+  <string name="logs_empty">Scrcpy タグのログはありません。</string>
+  <string name="logs_load_failed">ログの読み込みに失敗しました</string>
   <string name="appswitch_button">=</string>
   <string name="home_button">o</string>
   <string name="back_button">\u003C</string>

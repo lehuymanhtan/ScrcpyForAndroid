@@ -20,6 +20,9 @@
             android:name=".Scrcpy"
             android:enabled="true"
             android:exported="true"></service>
+        <activity
+            android:name=".LogActivity"
+            android:exported="false" />
         <service android:name=".FloatService" />
     </application>
 

@@ -2,7 +2,6 @@ package org.client.scrcpy;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -36,10 +35,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListPopupWindow;
-import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.Switch;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import org.client.scrcpy.utils.AdbHelper;
@@ -52,11 +49,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.BufferedReader;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
@@ -66,7 +59,6 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
 
     // 是否直接连接远程
     public final static String START_REMOTE = "start_remote_headless";
-    private static final String[] LOGCAT_COMMAND = new String[]{"logcat", "-d", "-v", "time", "-s", "Scrcpy:*", "ADB:*", "*:S"};
 
     private boolean headlessMode = false;  // 是否为无头模式，不显示操作选项等
     private int screenWidth;
@@ -267,7 +259,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             getAttributes();
             connectScrcpyServer(serverAdr);
         });
-        viewLogsButton.setOnClickListener(v -> showLogDialog());
+        viewLogsButton.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, LogActivity.class)));
 
 //        floatButton.setOnClickListener(v -> {
 //            getAttributes();
@@ -651,52 +643,6 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             }
         }
         return 2048000;
-    }
-
-    private void showLogDialog() {
-        Progress.showDialog(this, getString(R.string.please_wait));
-        ThreadUtils.workPost(() -> {
-            final String logs = loadAppLogs();
-            ThreadUtils.post(() -> {
-                Progress.closeDialog();
-                TextView textView = new TextView(this);
-                textView.setText(logs);
-                textView.setTextIsSelectable(true);
-                textView.setPadding(24, 24, 24, 24);
-                ScrollView scrollView = new ScrollView(this);
-                scrollView.addView(textView);
-                new AlertDialog.Builder(this)
-                        .setTitle(R.string.action_view_logs)
-                        .setView(scrollView)
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show();
-            });
-        });
-    }
-
-    private String loadAppLogs() {
-        Process process = null;
-        StringBuilder builder = new StringBuilder();
-        try {
-            process = new ProcessBuilder(LOGCAT_COMMAND).redirectErrorStream(true).start();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    builder.append(line).append('\n');
-                }
-            }
-            process.waitFor();
-        } catch (Exception e) {
-            return "Failed to load logs: " + e.getMessage();
-        } finally {
-            if (process != null) {
-                process.destroy();
-            }
-        }
-        if (builder.length() == 0) {
-            return "No logs found for Scrcpy tags.";
-        }
-        return builder.toString();
     }
 
     /**
