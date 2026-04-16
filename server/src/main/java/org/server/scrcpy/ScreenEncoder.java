@@ -133,8 +133,7 @@ public class ScreenEncoder implements Device.RotationListener {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                AudioEncoder audioEncoder = new AudioEncoder(audioBitRate);
-                audioEncoder.setCodec(audioCodec);
+                AudioEncoder audioEncoder = new AudioEncoder(audioBitRate, audioCodec);
                 try {
                     audioEncoder.streamScreen(outputStream);
                 } catch (IOException e) {

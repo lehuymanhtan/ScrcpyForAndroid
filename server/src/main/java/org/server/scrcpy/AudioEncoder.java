@@ -40,6 +40,11 @@ public class AudioEncoder {
         this.bitRate = bitRate;
     }
 
+    public AudioEncoder(int bitRate, String codec) {
+        this.bitRate = bitRate;
+        setCodec(codec);
+    }
+
     public void setCodec(String codec) {
         this.codec = CODEC_AAC.equals(codec) ? codec : CODEC_AAC;
     }

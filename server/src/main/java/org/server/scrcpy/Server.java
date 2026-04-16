@@ -19,8 +19,8 @@ public final class Server {
         Workarounds.apply();  // init content
 
         final Device device = new Device(options);
-        applyKeepAwake(options);
         try (DroidConnection connection = DroidConnection.open(ip)) {
+            applyKeepAwake(options);
             ScreenEncoder screenEncoder = new ScreenEncoder(options);
 
             // asynchronous

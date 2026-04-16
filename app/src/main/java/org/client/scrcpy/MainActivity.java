@@ -516,36 +516,21 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         PreUtils.put(context, Constant.CONTROL_NAV, nav);
 
         String[] resolutionOptions = getResources().getStringArray(R.array.options_resolution_values);
-        int resolutionPosition = videoResolutionSpinner.getSelectedItemPosition();
-        if (resolutionPosition < 0 || resolutionPosition >= resolutionOptions.length) {
-            resolutionPosition = 0;
-        }
+        int resolutionPosition = getSafeSelectedIndex(videoResolutionSpinner, resolutionOptions.length);
         final String[] videoResolutions = resolutionOptions[resolutionPosition].split("x");
         screenHeight = Integer.parseInt(videoResolutions[0]);
         screenWidth = Integer.parseInt(videoResolutions[1]);
         int[] bitrateOptions = getResources().getIntArray(R.array.options_bitrate_values);
-        int bitratePosition = videoBitrateSpinner.getSelectedItemPosition();
-        if (bitratePosition < 0 || bitratePosition >= bitrateOptions.length) {
-            bitratePosition = 0;
-        }
+        int bitratePosition = getSafeSelectedIndex(videoBitrateSpinner, bitrateOptions.length);
         videoBitrate = bitrateOptions[bitratePosition];
         int[] delayOptions = getResources().getIntArray(R.array.options_delay_values);
-        int delayPosition = delayControlSpinner.getSelectedItemPosition();
-        if (delayPosition < 0 || delayPosition >= delayOptions.length) {
-            delayPosition = 0;
-        }
+        int delayPosition = getSafeSelectedIndex(delayControlSpinner, delayOptions.length);
         delayControl = delayOptions[delayPosition];
         String[] videoCodecOptions = getResources().getStringArray(R.array.options_video_codec_values);
-        int videoCodecPosition = videoCodecSpinner.getSelectedItemPosition();
-        if (videoCodecPosition < 0 || videoCodecPosition >= videoCodecOptions.length) {
-            videoCodecPosition = 0;
-        }
+        int videoCodecPosition = getSafeSelectedIndex(videoCodecSpinner, videoCodecOptions.length);
         videoCodec = videoCodecOptions[videoCodecPosition];
         String[] audioCodecOptions = getResources().getStringArray(R.array.options_audio_codec_values);
-        int audioCodecPosition = audioCodecSpinner.getSelectedItemPosition();
-        if (audioCodecPosition < 0 || audioCodecPosition >= audioCodecOptions.length) {
-            audioCodecPosition = 0;
-        }
+        int audioCodecPosition = getSafeSelectedIndex(audioCodecSpinner, audioCodecOptions.length);
         audioCodec = audioCodecOptions[audioCodecPosition];
 
         String customVideoBitrate = customVideoBitrateEditText.getText().toString().trim();
@@ -595,6 +580,17 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         } catch (NumberFormatException e) {
             return defaultValue;
         }
+    }
+
+    private int getSafeSelectedIndex(Spinner spinner, int size) {
+        if (size <= 0) {
+            return 0;
+        }
+        int position = spinner.getSelectedItemPosition();
+        if (position < 0 || position >= size) {
+            return 0;
+        }
+        return position;
     }
 
     /**
