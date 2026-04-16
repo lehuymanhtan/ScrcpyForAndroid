@@ -115,7 +115,8 @@ public class EventController {
         }
 
         int action = buffer[0];
-        if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || displayPowerOffByController || proximity)) {
+        boolean screenOffWithoutController = !device.isScreenOn() && !displayPowerOffByController;
+        if (action == MotionEvent.ACTION_UP && (screenOffWithoutController || proximity)) {
             // ACTION_UP is intercepted here for power/proximity logic, so explicitly clear pending pointers
             // to avoid stuck "holding" state when screen is off.
             releasePendingTouches();
@@ -336,7 +337,7 @@ public class EventController {
 //            }
 //        }
 
-        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, finalAction, pointerCount, pointerProperties, pointerCoords, 0, button, 1f, 1f,
+        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, finalAction, pointerCount, pointerProperties, pointerCoords, 0, 0, 1f, 1f,
                 0, 0, source, 0);
 
         // return Device.injectEvent(event, targetDisplayId, Device.INJECT_MODE_ASYNC);

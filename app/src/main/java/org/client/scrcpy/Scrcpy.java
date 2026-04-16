@@ -182,7 +182,8 @@ public class Scrcpy extends Service {
         int pointCount = touch_event.getPointerCount();
         // Log.e("Scrcpy", "pointer id: " + pointerId + " , action: " + touch_event.getAction() + " ,point count: " + pointCount + " x: " + touch_event.getX() + " y: " + touch_event.getY());
 
-        switch (touch_event.getAction()) {
+        int action = touch_event.getActionMasked();
+        switch (action) {
             case MotionEvent.ACTION_MOVE: // 所有手指移动
                 // 遍历所有触摸点，使用 pointerId 和 pointerIndex 来获取所有触摸点的信息
                 for (int i = 0; i < touch_event.getPointerCount(); i++) {
@@ -191,7 +192,7 @@ public class Scrcpy extends Service {
                     int y = (int) touch_event.getY(i);
                     // 处理每一个触摸点的x, y坐标
                     // Log.e("Scrcpy", "触摸移动，index : " + i + " ,x : " + x + " , y: " + y + " ,currentPointerId: " + currentPointerId);
-                    sendTouchEvent(touch_event.getAction(), touch_event.getButtonState(), (int) (x * realW / displayW), (int) (y * realH / displayH), currentPointerId);
+                    sendTouchEvent(action, touch_event.getButtonState(), (int) (x * realW / displayW), (int) (y * realH / displayH), currentPointerId);
                 }
                 break;
             case MotionEvent.ACTION_POINTER_UP: // 中间手指抬起
@@ -199,7 +200,13 @@ public class Scrcpy extends Service {
             case MotionEvent.ACTION_DOWN: // 第一个手指按下
             case MotionEvent.ACTION_POINTER_DOWN: // 中间的手指按下
             default:
-                sendTouchEvent(touch_event.getAction(), touch_event.getButtonState(), (int) (touch_event.getX() * realW / displayW), (int) (touch_event.getY() * realH / displayH), pointerId);
+                sendTouchEvent(
+                        action,
+                        touch_event.getButtonState(),
+                        (int) (touch_event.getX(actionIndex) * realW / displayW),
+                        (int) (touch_event.getY(actionIndex) * realH / displayH),
+                        pointerId
+                );
                 break;
 
         }
