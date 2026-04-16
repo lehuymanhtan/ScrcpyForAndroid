@@ -116,6 +116,9 @@ public class EventController {
 
         int action = buffer[0];
         if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || displayPowerOffByController || proximity)) {
+            // ACTION_UP is intercepted here for power/proximity logic, so explicitly clear pending pointers
+            // to avoid stuck "holding" state when screen is off.
+            releasePendingTouches();
             if (hit) {
                 if (now - then < 250) {
                     then = 0;
