@@ -56,7 +56,13 @@ public class ScreenEncoder implements Device.RotationListener {
 
     public ScreenEncoder(Options options) {
         this(options.getBitRate(), options.getMaxFps() > 0 ? options.getMaxFps() : DEFAULT_FRAME_RATE, DEFAULT_I_FRAME_INTERVAL);
-        this.videoMimeType = Options.VIDEO_CODEC_H265.equals(options.getVideoCodec()) ? "video/hevc" : "video/avc";
+        if (Options.VIDEO_CODEC_H265.equals(options.getVideoCodec())) {
+            this.videoMimeType = "video/hevc";
+        } else if (Options.VIDEO_CODEC_AV1.equals(options.getVideoCodec())) {
+            this.videoMimeType = "video/av01";
+        } else {
+            this.videoMimeType = "video/avc";
+        }
         this.audioForward = options.isAudioForward();
         this.audioCodec = options.getAudioCodec();
         this.audioBitRate = options.getAudioBitRate();
@@ -73,6 +79,9 @@ public class ScreenEncoder implements Device.RotationListener {
         format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            format.setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, frameRate);
+        }
 
         // display the very first frame, and recover from bad quality when no new frames
         format.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, MICROSECONDS_IN_ONE_SECOND * REPEAT_FRAME_DELAY / frameRate); // µs

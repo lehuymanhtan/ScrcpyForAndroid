@@ -17,7 +17,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class AudioDecoder {
 
     public static final String MIMETYPE_AUDIO_AAC = "audio/mp4a-latm";
+    public static final String MIMETYPE_AUDIO_OPUS = "audio/opus";
+    public static final String MIMETYPE_AUDIO_FLAC = "audio/flac";
     public static final String CODEC_AAC = "aac";
+    public static final String CODEC_OPUS = "opus";
+    public static final String CODEC_FLAC = "flac";
+    public static final String CODEC_RAW = "raw";
 
     private MediaCodec mCodec;
     private Worker mWorker;
@@ -28,7 +33,24 @@ public class AudioDecoder {
     private String codec = CODEC_AAC;
 
     public void setCodec(String codec) {
-        this.codec = CODEC_AAC.equals(codec) ? codec : CODEC_AAC;
+        if (CODEC_OPUS.equals(codec) || CODEC_FLAC.equals(codec) || CODEC_RAW.equals(codec) || CODEC_AAC.equals(codec)) {
+            this.codec = codec;
+        } else {
+            this.codec = CODEC_AAC;
+        }
+    }
+
+    private String getMimeType() {
+        if (CODEC_OPUS.equals(codec)) {
+            return MIMETYPE_AUDIO_OPUS;
+        }
+        if (CODEC_FLAC.equals(codec)) {
+            return MIMETYPE_AUDIO_FLAC;
+        }
+        if (CODEC_RAW.equals(codec)) {
+            Log.w("Scrcpy", "Raw audio codec is not supported by this build, falling back to AAC");
+        }
+        return MIMETYPE_AUDIO_AAC;
     }
 
     private void initAudioTrack() {
@@ -93,15 +115,19 @@ public class AudioDecoder {
                     audioTrack.stop();
                 }
             }
-            MediaFormat format = MediaFormat.createAudioFormat(MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 2);
-            // 设置比特率
-            format.setInteger(MediaFormat.KEY_BIT_RATE, 128000);
+            String mimeType = getMimeType();
+            MediaFormat format = MediaFormat.createAudioFormat(mimeType, SAMPLE_RATE, 2);
+            if (CODEC_AAC.equals(codec)) {
+                format.setInteger(MediaFormat.KEY_BIT_RATE, 128000);
+            }
             // adts 0
             // format.setInteger(MediaFormat.KEY_IS_ADTS, 1);
-            format.setByteBuffer("csd-0", ByteBuffer.wrap(data));
+            if (data != null && data.length > 0) {
+                format.setByteBuffer("csd-0", ByteBuffer.wrap(data));
+            }
 
             try {
-                mCodec = MediaCodec.createDecoderByType(MIMETYPE_AUDIO_AAC);
+                mCodec = MediaCodec.createDecoderByType(mimeType);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to create codec", e);
             }

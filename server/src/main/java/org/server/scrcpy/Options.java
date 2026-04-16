@@ -3,7 +3,11 @@ package org.server.scrcpy;
 public class Options {
     public static final String VIDEO_CODEC_H264 = "h264";
     public static final String VIDEO_CODEC_H265 = "h265";
+    public static final String VIDEO_CODEC_AV1 = "av1";
     public static final String AUDIO_CODEC_AAC = "aac";
+    public static final String AUDIO_CODEC_OPUS = "opus";
+    public static final String AUDIO_CODEC_FLAC = "flac";
+    public static final String AUDIO_CODEC_RAW = "raw";
 
     private int maxSize;
     private int bitRate;
@@ -85,7 +89,13 @@ public class Options {
     }
 
     public void setVideoCodec(String videoCodec) {
-        this.videoCodec = VIDEO_CODEC_H265.equals(videoCodec) ? VIDEO_CODEC_H265 : VIDEO_CODEC_H264;
+        if (VIDEO_CODEC_H265.equals(videoCodec)) {
+            this.videoCodec = VIDEO_CODEC_H265;
+        } else if (VIDEO_CODEC_AV1.equals(videoCodec)) {
+            this.videoCodec = VIDEO_CODEC_AV1;
+        } else {
+            this.videoCodec = VIDEO_CODEC_H264;
+        }
     }
 
     public String getAudioCodec() {
@@ -93,6 +103,13 @@ public class Options {
     }
 
     public void setAudioCodec(String audioCodec) {
-        this.audioCodec = AUDIO_CODEC_AAC.equals(audioCodec) ? audioCodec : AUDIO_CODEC_AAC;
+        if (AUDIO_CODEC_OPUS.equals(audioCodec)
+                || AUDIO_CODEC_FLAC.equals(audioCodec)
+                || AUDIO_CODEC_RAW.equals(audioCodec)
+                || AUDIO_CODEC_AAC.equals(audioCodec)) {
+            this.audioCodec = audioCodec;
+        } else {
+            this.audioCodec = AUDIO_CODEC_AAC;
+        }
     }
 }

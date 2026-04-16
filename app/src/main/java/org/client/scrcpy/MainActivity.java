@@ -2,6 +2,7 @@ package org.client.scrcpy;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -35,8 +36,10 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListPopupWindow;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.client.scrcpy.utils.AdbHelper;
@@ -50,8 +53,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.BufferedReader;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
@@ -251,6 +256,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         landscape = false;  // 将模式重新置为 竖屏，模式不正确将导致连接黑屏
         setContentView(R.layout.activity_main);
         final Button startButton = findViewById(R.id.button_start);
+        final Button viewLogsButton = findViewById(R.id.button_view_logs);
         // final Button floatButton = findViewById(R.id.button_start_float);
 
         sendCommands = new SendCommands();
@@ -260,6 +266,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             getAttributes();
             connectScrcpyServer(serverAdr);
         });
+        viewLogsButton.setOnClickListener(v -> showLogDialog());
 
 //        floatButton.setOnClickListener(v -> {
 //            getAttributes();
@@ -332,6 +339,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         final EditText customFpsEditText = findViewById(R.id.edit_custom_fps);
         final EditText customVideoBitrateEditText = findViewById(R.id.edit_custom_video_bitrate);
         final EditText customAudioBitrateEditText = findViewById(R.id.edit_custom_audio_bitrate);
+        final Spinner videoBitrateSpinner = findViewById(R.id.spinner_video_bitrate);
         final Switch aSwitch0 = findViewById(R.id.switch0);
         final Switch aSwitch1 = findViewById(R.id.switch1);
         final Switch disableAudioSwitch = findViewById(R.id.switch_disable_audio_forward);
@@ -352,7 +360,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         turnScreenOffSwitch.setChecked(PreUtils.get(context, Constant.PREFERENCE_TURN_SCREEN_OFF, false));
         keepAwakeSwitch.setChecked(PreUtils.get(context, Constant.PREFERENCE_KEEP_AWAKE, false));
         setSpinner(R.array.options_resolution_values, R.id.spinner_video_resolution, Constant.PREFERENCE_SPINNER_RESOLUTION);
-        setSpinner(R.array.options_bitrate_keys, R.id.spinner_video_bitrate, Constant.PREFERENCE_SPINNER_BITRATE);
+        setVideoBitrateSpinner();
         setSpinner(R.array.options_delay_keys, R.id.delay_control_spinner, Constant.PREFERENCE_SPINNER_DELAY);
         setSpinner(R.array.options_video_codec_values, R.id.spinner_video_codec, Constant.PREFERENCE_SPINNER_VIDEO_CODEC);
         setSpinner(R.array.options_audio_codec_values, R.id.spinner_audio_codec, Constant.PREFERENCE_SPINNER_AUDIO_CODEC);
@@ -365,6 +373,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         if (!TextUtils.isEmpty(savedVideoBitrate)) {
             customVideoBitrateEditText.setText(savedVideoBitrate);
         }
+        updateCustomVideoBitrateVisibility(videoBitrateSpinner);
         String savedAudioBitrate = PreUtils.get(context, Constant.PREFERENCE_CUSTOM_AUDIO_BITRATE, "");
         if (!TextUtils.isEmpty(savedAudioBitrate)) {
             customAudioBitrateEditText.setText(savedAudioBitrate);
@@ -462,6 +471,42 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         }
     }
 
+    private void setVideoBitrateSpinner() {
+        final Spinner spinner = findViewById(R.id.spinner_video_bitrate);
+        ArrayAdapter<CharSequence> arrayAdapter = ArrayAdapter.createFromResource(this, R.array.options_bitrate_keys, android.R.layout.simple_spinner_item);
+        arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(arrayAdapter);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                PreUtils.put(context, Constant.PREFERENCE_SPINNER_BITRATE, position);
+                updateCustomVideoBitrateVisibility(spinner);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                PreUtils.put(context, Constant.PREFERENCE_SPINNER_BITRATE, 0);
+                updateCustomVideoBitrateVisibility(spinner);
+            }
+        });
+        int selection = PreUtils.get(context, Constant.PREFERENCE_SPINNER_BITRATE, 0);
+        if (selection < arrayAdapter.getCount()) {
+            spinner.setSelection(selection);
+        } else {
+            spinner.setSelection(0);
+        }
+    }
+
+    private void updateCustomVideoBitrateVisibility(Spinner spinner) {
+        View layout = findViewById(R.id.layout_custom_video_bitrate);
+        if (layout == null || spinner == null) {
+            return;
+        }
+        int count = spinner.getAdapter() != null ? spinner.getAdapter().getCount() : 0;
+        boolean customSelected = count > 0 && spinner.getSelectedItemPosition() == count - 1;
+        layout.setVisibility(customSelected ? View.VISIBLE : View.GONE);
+    }
+
     private void setSpinner(final int textArrayOptionResId, final int textViewResId, final String preferenceId) {
 
         final Spinner spinner = findViewById(textViewResId);
@@ -522,7 +567,7 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         screenWidth = Integer.parseInt(videoResolutions[1]);
         int[] bitrateOptions = getResources().getIntArray(R.array.options_bitrate_values);
         int bitratePosition = getSafeSelectedIndex(videoBitrateSpinner, bitrateOptions.length);
-        videoBitrate = bitrateOptions[bitratePosition];
+        int selectedBitrate = bitrateOptions[bitratePosition];
         int[] delayOptions = getResources().getIntArray(R.array.options_delay_values);
         int delayPosition = getSafeSelectedIndex(delayControlSpinner, delayOptions.length);
         delayControl = delayOptions[delayPosition];
@@ -536,7 +581,11 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         String customVideoBitrate = customVideoBitrateEditText.getText().toString().trim();
         String customAudioBitrate = customAudioBitrateEditText.getText().toString().trim();
         String customFps = customFpsEditText.getText().toString().trim();
-        videoBitrate = parsePositiveIntOrDefault(customVideoBitrate, videoBitrate);
+        if (selectedBitrate > 0) {
+            videoBitrate = selectedBitrate;
+        } else {
+            videoBitrate = parsePositiveIntOrDefault(customVideoBitrate, getDefaultVideoBitrate());
+        }
         audioBitrate = parsePositiveIntOrDefault(customAudioBitrate, 128000);
         maxFps = parsePositiveIntOrDefault(customFps, 60);
 
@@ -591,6 +640,62 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             return 0;
         }
         return position;
+    }
+
+    private int getDefaultVideoBitrate() {
+        int[] bitrateOptions = getResources().getIntArray(R.array.options_bitrate_values);
+        for (int bitrate : bitrateOptions) {
+            if (bitrate > 0) {
+                return bitrate;
+            }
+        }
+        return 2048000;
+    }
+
+    private void showLogDialog() {
+        Progress.showDialog(this, getString(R.string.please_wait));
+        ThreadUtils.workPost(() -> {
+            final String logs = loadAppLogs();
+            ThreadUtils.post(() -> {
+                Progress.closeDialog();
+                TextView textView = new TextView(this);
+                textView.setText(logs);
+                textView.setTextIsSelectable(true);
+                textView.setPadding(24, 24, 24, 24);
+                ScrollView scrollView = new ScrollView(this);
+                scrollView.addView(textView);
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.action_view_logs)
+                        .setView(scrollView)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+            });
+        });
+    }
+
+    private String loadAppLogs() {
+        Process process = null;
+        StringBuilder builder = new StringBuilder();
+        try {
+            process = new ProcessBuilder("logcat", "-d", "-v", "time", "-s", "Scrcpy:*", "ADB:*", "*:S").redirectErrorStream(true).start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    builder.append(line).append('\n');
+                }
+            }
+            process.waitFor();
+        } catch (Exception e) {
+            return "Failed to load logs: " + e.getMessage();
+        } finally {
+            if (process != null) {
+                process.destroy();
+            }
+        }
+        if (builder.length() == 0) {
+            return "No logs found for Scrcpy tags.";
+        }
+        return builder.toString();
     }
 
     /**

@@ -12,6 +12,7 @@
     <string name="label_audio_codec">Audio codec</string>
     <string name="label_x">x</string>
     <string name="action_start">Start</string>
+    <string name="action_view_logs">View logs</string>
     <string name="appswitch_button">=</string>
     <string name="home_button">o</string>
     <string name="back_button">\u003C</string>
@@ -59,6 +60,7 @@
         <item>4 Mbps</item>
         <item>2 Mbps</item>
         <item>1 Mbps</item>
+        <item>Custom</item>
     </string-array>
 
     <integer-array name="options_bitrate_values">
@@ -66,16 +68,20 @@
         <item>4096000</item>
         <item>2048000</item>
         <item>1024000</item>
+        <item>0</item>
     </integer-array>
 
     <string-array name="options_video_codec_values">
         <item>h264</item>
         <item>h265</item>
+        <item>av1</item>
     </string-array>
 
     <string-array name="options_audio_codec_values">
         <item>aac</item>
+        <item>opus</item>
+        <item>flac</item>
+        <item>raw</item>
     </string-array>
 
 </resources>
-

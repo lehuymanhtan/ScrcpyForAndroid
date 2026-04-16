@@ -23,7 +23,12 @@ import java.nio.ByteBuffer;
 
 public class AudioEncoder {
     public static final String MIMETYPE_AUDIO_AAC = "audio/mp4a-latm";
+    public static final String MIMETYPE_AUDIO_OPUS = "audio/opus";
+    public static final String MIMETYPE_AUDIO_FLAC = "audio/flac";
     public static final String CODEC_AAC = "aac";
+    public static final String CODEC_OPUS = "opus";
+    public static final String CODEC_FLAC = "flac";
+    public static final String CODEC_RAW = "raw";
 
     private int bitRate;
     private String codec = CODEC_AAC;
@@ -46,10 +51,23 @@ public class AudioEncoder {
     }
 
     public void setCodec(String codec) {
-        this.codec = CODEC_AAC.equals(codec) ? codec : CODEC_AAC;
+        if (CODEC_OPUS.equals(codec) || CODEC_FLAC.equals(codec) || CODEC_RAW.equals(codec) || CODEC_AAC.equals(codec)) {
+            this.codec = codec;
+        } else {
+            this.codec = CODEC_AAC;
+        }
     }
 
     private String getMimeType() {
+        if (CODEC_OPUS.equals(codec)) {
+            return MIMETYPE_AUDIO_OPUS;
+        }
+        if (CODEC_FLAC.equals(codec)) {
+            return MIMETYPE_AUDIO_FLAC;
+        }
+        if (CODEC_RAW.equals(codec)) {
+            Ln.w("Raw audio codec is not supported by this build, falling back to AAC");
+        }
         return MIMETYPE_AUDIO_AAC;
     }
 

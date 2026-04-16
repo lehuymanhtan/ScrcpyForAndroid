@@ -13,17 +13,30 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class VideoDecoder {
     public static final String CODEC_H264 = "h264";
     public static final String CODEC_H265 = "h265";
+    public static final String CODEC_AV1 = "av1";
     private MediaCodec mCodec;
     private Worker mWorker;
     private AtomicBoolean mIsConfigured = new AtomicBoolean(false);
     private String codec = CODEC_H264;
 
     public void setCodec(String codec) {
-        this.codec = CODEC_H265.equals(codec) ? CODEC_H265 : CODEC_H264;
+        if (CODEC_H265.equals(codec)) {
+            this.codec = CODEC_H265;
+        } else if (CODEC_AV1.equals(codec)) {
+            this.codec = CODEC_AV1;
+        } else {
+            this.codec = CODEC_H264;
+        }
     }
 
     private String getMimeType() {
-        return CODEC_H265.equals(codec) ? "video/hevc" : "video/avc";
+        if (CODEC_H265.equals(codec)) {
+            return "video/hevc";
+        }
+        if (CODEC_AV1.equals(codec)) {
+            return "video/av01";
+        }
+        return "video/avc";
     }
 
     public void decodeSample(byte[] data, int offset, int size, long presentationTimeUs, int flags) {
