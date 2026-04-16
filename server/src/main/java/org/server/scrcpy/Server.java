@@ -59,63 +59,74 @@ public final class Server {
         if (args.length < 1) {
             return options;
         }
-        ip = String.valueOf(args[0]);
+        ip = normalizeArg(args[0]);
 
 
         if (args.length < 2) {
             return options;
         }
-        int maxSize = Integer.parseInt(args[1]) & ~7; // multiple of 8
+        int maxSize = Integer.parseInt(normalizeArg(args[1])) & ~7; // multiple of 8
         options.setMaxSize(maxSize);
 
         if (args.length < 3) {
             return options;
         }
-        int bitRate = Integer.parseInt(args[2]);
+        int bitRate = Integer.parseInt(normalizeArg(args[2]));
         options.setBitRate(bitRate);
 
         if (args.length < 4) {
             return options;
         }
         // use "adb forward" instead of "adb tunnel"? (so the server must listen)
-        boolean tunnelForward = Boolean.parseBoolean(args[3]);
+        boolean tunnelForward = Boolean.parseBoolean(normalizeArg(args[3]));
         options.setTunnelForward(tunnelForward);
 
         if (args.length < 5) {
             return options;
         }
-        options.setMaxFps(Integer.parseInt(args[4]));
+        options.setMaxFps(Integer.parseInt(normalizeArg(args[4])));
 
         if (args.length < 6) {
             return options;
         }
-        options.setVideoCodec(args[5]);
+        options.setVideoCodec(normalizeArg(args[5]));
 
         if (args.length < 7) {
             return options;
         }
-        options.setAudioCodec(args[6]);
+        options.setAudioCodec(normalizeArg(args[6]));
 
         if (args.length < 8) {
             return options;
         }
-        options.setAudioBitRate(Integer.parseInt(args[7]));
+        options.setAudioBitRate(Integer.parseInt(normalizeArg(args[7])));
 
         if (args.length < 9) {
             return options;
         }
-        options.setAudioForward(Boolean.parseBoolean(args[8]));
+        options.setAudioForward(Boolean.parseBoolean(normalizeArg(args[8])));
 
         if (args.length < 10) {
             return options;
         }
-        options.setTurnScreenOff(Boolean.parseBoolean(args[9]));
+        options.setTurnScreenOff(Boolean.parseBoolean(normalizeArg(args[9])));
 
         if (args.length < 11) {
             return options;
         }
-        options.setKeepAwake(Boolean.parseBoolean(args[10]));
+        options.setKeepAwake(Boolean.parseBoolean(normalizeArg(args[10])));
         return options;
+    }
+
+    private static String normalizeArg(String arg) {
+        if (arg == null) {
+            return "";
+        }
+        String trimmed = arg.trim();
+        if (trimmed.endsWith(";")) {
+            return trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
     }
 
     private static void applyKeepAwake(Options options) {
